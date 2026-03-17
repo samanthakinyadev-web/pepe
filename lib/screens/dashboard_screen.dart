@@ -3,10 +3,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:loho_ebook_reader/models/menu_item.dart';
+import 'package:loho_ebook_reader/screens/category_items_screen.dart';
 import 'package:loho_ebook_reader/screens/home_screen.dart';
+import 'package:loho_ebook_reader/screens/menu_screen.dart';
 import 'package:loho_ebook_reader/screens/profile_screen.dart';
 import 'package:loho_ebook_reader/services/php_api_service.dart';
-import 'package:loho_ebook_reader/screens/leaderboard_screen.dart';
 
 class GamifiedDashboardScreen extends StatefulWidget {
   const GamifiedDashboardScreen({super.key});
@@ -19,6 +21,8 @@ class GamifiedDashboardScreen extends StatefulWidget {
 class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _homeScaffoldKey = GlobalKey<ScaffoldState>();
+  late final MenuItem _elimuQuestMenuItem = MenuItem.getDefaultMenuItems()
+      .firstWhere((item) => item.id == 'elimu_quest');
 
   @override
   void initState() {
@@ -29,16 +33,6 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
   }
 
   void _onItemTapped(int index) {
-    if (index == 2) {
-      setState(() {
-        _selectedIndex = 1;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _homeScaffoldKey.currentState?.openDrawer();
-      });
-      return;
-    }
-
     setState(() {
       _selectedIndex = index;
     });
@@ -90,9 +84,9 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          _buildDashboardContent(), // 0: The Learning Map
+          CategoryItemsScreen(menuItem: _elimuQuestMenuItem), // 0: Elimu Quest
           HomeScreen(scaffoldKey: _homeScaffoldKey), // 1: The original Library
-          const LeaderboardScreen(), // 2: The New Gamified Leaderboard
+          const MenuScreen(), // 2: Menu
           const ProfileScreen(), // 3: The New Profile/Badges Screen
         ],
       ),
@@ -648,9 +642,9 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
         elevation: 0,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.explore_outlined, size: 28),
-            activeIcon: Icon(Icons.explore_rounded, size: 28),
-            label: 'home',
+            icon: Icon(Icons.flag_outlined, size: 28),
+            activeIcon: Icon(Icons.flag_rounded, size: 28),
+            label: 'Quest',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.local_library_outlined, size: 28),

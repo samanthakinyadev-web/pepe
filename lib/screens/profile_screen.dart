@@ -15,6 +15,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userName = 'Loading...';
   String _lohoId = 'LOHO-...';
   String _grade = 'Grade 4';
+  String _profileImageUrl = '';
 
   @override
   void initState() {
@@ -29,6 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _userName = prefs.getString('user_name') ?? 'Alex Learner';
       _lohoId = prefs.getString('loho_id') ?? 'LOHO-12345';
       _grade = prefs.getString('grade') ?? 'Grade 4';
+      _profileImageUrl = prefs.getString('profile_image_url') ?? '';
     });
 
     // 2. Fetch fresh dynamic data from our API
@@ -53,12 +55,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ? fetchedGrade.toString()
               : 'Grade $fetchedGrade';
         }
+
+        // Fetch profile image URL
+        _profileImageUrl =
+            userData['profile_image'] ??
+            userData['avatar'] ??
+            userData['avatar_url'] ??
+            _profileImageUrl;
       });
 
       // Update local storage so the next immediate load displays the correct fresh data
       await prefs.setString('user_name', _userName);
       await prefs.setString('loho_id', _lohoId);
       await prefs.setString('grade', _grade);
+      await prefs.setString('profile_image_url', _profileImageUrl);
     }
   }
 
@@ -121,10 +131,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         width: 4,
                       ),
                     ),
-                    child: const CircleAvatar(
+                    child: CircleAvatar(
                       radius: 50,
                       backgroundImage: NetworkImage(
-                        'https://i.pravatar.cc/150?img=12',
+                        _profileImageUrl.isNotEmpty
+                            ? _profileImageUrl
+                            : 'https://i.pravatar.cc/150?img=12',
                       ),
                     ),
                   ),

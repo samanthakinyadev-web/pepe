@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/user_data_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UpdateProfileScreen extends StatefulWidget {
   const UpdateProfileScreen({super.key});
@@ -10,17 +12,18 @@ class UpdateProfileScreen extends StatefulWidget {
 class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  String _selectedAvatar = 'https://i.pravatar.cc/150?img=12';
+  String _selectedAvatar =
+      'https://api.dicebear.com/9.x/adventurer/png?seed=Felix';
 
   final List<String> _availableAvatars = [
-    'https://i.pravatar.cc/150?img=11',
-    'https://i.pravatar.cc/150?img=12',
-    'https://i.pravatar.cc/150?img=13',
-    'https://i.pravatar.cc/150?img=14',
-    'https://i.pravatar.cc/150?img=15',
-    'https://i.pravatar.cc/150?img=5',
-    'https://i.pravatar.cc/150?img=4',
-    'https://i.pravatar.cc/150?img=3',
+    'https://api.dicebear.com/9.x/adventurer/png?seed=Felix',
+    'https://api.dicebear.com/9.x/adventurer/png?seed=Aneka',
+    'https://api.dicebear.com/9.x/adventurer/png?seed=Jasper',
+    'https://api.dicebear.com/9.x/adventurer/png?seed=Destiny',
+    'https://api.dicebear.com/9.x/adventurer/png?seed=Tinkerbell',
+    'https://api.dicebear.com/9.x/adventurer/png?seed=Bandit',
+    'https://api.dicebear.com/9.x/adventurer/png?seed=Jack',
+    'https://api.dicebear.com/9.x/adventurer/png?seed=Cali',
   ];
 
   // Form Controllers
@@ -44,8 +47,12 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     super.dispose();
   }
 
-  void _saveProfile() {
+  Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate()) {
+      // Save the selected avatar URL to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('profile_image_url', _selectedAvatar);
+
       // TODO: Implement actual save logic to backend/local storage
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -54,6 +61,10 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         ),
       );
       Navigator.pop(context);
+      //Update the value to API
+      UserDataService.instance.updateProfile({
+        "profile_image_url": _selectedAvatar,
+      });
     }
   }
 
