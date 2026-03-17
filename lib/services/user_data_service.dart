@@ -74,4 +74,30 @@ class UserDataService {
     // return response.statusCode == 200;
     return true;
   }
+
+  /// Fetches the user's notifications
+  Future<List<dynamic>?> fetchNotifications() async {
+    try {
+      final token = await AuthService.instance.getToken();
+      if (token == null || token.isEmpty) return null;
+
+      final response = await _dio.get(
+        '/student/notifications',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data is Map && response.data.containsKey('data')) {
+          return response.data['data'] as List<dynamic>;
+        } else if (response.data is List) {
+          return response.data as List<dynamic>;
+        }
+        return [response.data];
+      }
+    } catch (e) {
+      // Log error
+      return null;
+    }
+    return null;
+  }
 }

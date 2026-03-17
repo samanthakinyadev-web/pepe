@@ -1,3 +1,4 @@
+import 'notifications_screen.dart';
 import 'update_profile_screen.dart';
 import 'package:flutter/material.dart';
 import '../services/user_data_service.dart';
@@ -98,7 +99,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             onPressed: () {
-              // TODO: Navigate to notifications
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(),
+                ),
+              );
             },
           ),
           IconButton(

@@ -32,6 +32,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final PhpApiService _apiService = PhpApiService.instance;
   final CloudSyncServicePhp _cloudSyncService = CloudSyncServicePhp.instance;
 
+  late final GlobalKey<ScaffoldState> _scaffoldKey;
+
   late Future<List<Ebook>> _ebooksFuture;
   late Future<List<Ebook>> _cloudBooksFuture;
   String _searchQuery = '';
@@ -53,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _scaffoldKey = widget.scaffoldKey ?? GlobalKey<ScaffoldState>();
     _syncAndLoadBooks();
 
     // Check for daily reward after the first frame renders
@@ -303,6 +306,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _handleCategoryTap(MenuItem item) async {
     if (item.isComingSoon) return;
+
+    // Close the drawer before navigating to prevent routing/rendering issues
+    // that can cause a black screen when pressing the back arrow.
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      _scaffoldKey.currentState?.closeDrawer();
+    }
 
     final directIntendedByMenuId = <String, String>{
       'esoma_kids': '/esoma',
@@ -613,7 +622,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: widget.scaffoldKey,
+      key: _scaffoldKey,
       backgroundColor: const Color(0xFFF0F8FF), // Updated to match dashboard
       drawer: CategoryNavBar(onItemTap: _handleCategoryTap),
       appBar: AppBar(
@@ -677,7 +686,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          Navigator.pushReplacement(
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => const GamifiedDashboardScreen(),

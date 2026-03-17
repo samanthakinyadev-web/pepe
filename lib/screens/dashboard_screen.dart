@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:loho_ebook_reader/models/menu_item.dart';
-import 'package:loho_ebook_reader/screens/category_items_screen.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:loho_ebook_reader/screens/home_screen.dart';
 import 'package:loho_ebook_reader/screens/menu_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:loho_ebook_reader/screens/profile_screen.dart';
 import 'package:loho_ebook_reader/services/php_api_service.dart';
+import 'package:loho_ebook_reader/screens/category_items_screen.dart';
 
 class GamifiedDashboardScreen extends StatefulWidget {
   const GamifiedDashboardScreen({super.key});
@@ -23,19 +24,37 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
   final GlobalKey<ScaffoldState> _homeScaffoldKey = GlobalKey<ScaffoldState>();
   late final MenuItem _elimuQuestMenuItem = MenuItem.getDefaultMenuItems()
       .firstWhere((item) => item.id == 'elimu_quest');
+  String _userName = 'Learner';
+  String? _userAvatar;
 
   @override
   void initState() {
     super.initState();
+    _loadLastSessionState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkForUpdates();
     });
   }
 
-  void _onItemTapped(int index) {
+  Future<void> _loadLastSessionState() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _selectedIndex = prefs.getInt('last_dashboard_tab_index') ?? 0;
+        _userName = prefs.getString('user_name') ?? 'Learner';
+        _userAvatar = prefs.getString('user_avatar');
+      });
+    }
+  }
+
+  Future<void> _onItemTapped(int index) async {
     setState(() {
       _selectedIndex = index;
     });
+
+    // Store the session state to continue where the user left off
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('last_dashboard_tab_index', index);
   }
 
   // We wrap the original dashboard design in a helper method so it
@@ -44,24 +63,26 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
     return SafeArea(
       child: Stack(
         children: [
-          SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 24),
-                _buildQuestCard(),
-                const SizedBox(height: 30),
-                _buildLearningMapHeader(),
-                const SizedBox(height: 20),
-                _buildStatsSection(), // Added stats section here
-                const SizedBox(height: 20),
-                _buildSubjectGrid(),
-                const SizedBox(height: 30),
-                _buildSupportSection(),
-                const SizedBox(height: 80), // Padding for mascot
-              ],
-            ).animate().fadeIn(duration: 500.ms),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 24),
+                      _buildQuestCard(),
+                      const SizedBox(height: 30),
+                      _buildSupportSection(),
+                      const SizedBox(height: 80), // Padding for mascot
+                    ],
+                  ).animate().fadeIn(duration: 500.ms),
+                ),
+              );
+            },
           ),
           // Positioned(
           //   bottom: 16,
@@ -84,7 +105,7 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          CategoryItemsScreen(menuItem: _elimuQuestMenuItem), // 0: Elimu Quest
+          _buildDashboardContent(), // 0: Elimu Quest Dashboard
           HomeScreen(scaffoldKey: _homeScaffoldKey), // 1: The original Library
           const MenuScreen(), // 2: Menu
           const ProfileScreen(), // 3: The New Profile/Badges Screen
@@ -215,18 +236,34 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
     );
   }
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'Good morning, $_userName!';
+    } else if (hour < 17) {
+      return 'Good afternoon, $_userName!';
+    } else {
+      return 'Good evening, $_userName!';
+    }
+  }
+
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            color: Colors.blue.shade800,
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'jambo, Alex!',
+                  _getGreeting(),
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
@@ -241,12 +278,22 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
               ],
             ),
           ),
-          const CircleAvatar(
+          CircleAvatar(
             radius: 28,
-            backgroundImage: NetworkImage(
-              'https://i.pravatar.cc/150?img=12',
-            ), // Placeholder
-            backgroundColor: Colors.white,
+            backgroundColor: Colors.blue.shade100,
+            backgroundImage: _userAvatar != null && _userAvatar!.isNotEmpty
+                ? NetworkImage(_userAvatar!)
+                : null,
+            child: _userAvatar == null || _userAvatar!.isEmpty
+                ? Text(
+                    _userName.isNotEmpty ? _userName[0].toUpperCase() : 'U',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade800,
+                    ),
+                  )
+                : null,
           ),
         ],
       ),
@@ -257,291 +304,80 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child:
-          Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [const Color(0xFFFFA726), const Color(0xFFFF7043)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.orange.withOpacity(0.3),
-                      blurRadius: 15,
-                      offset: const Offset(0, 8),
+          GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CategoryItemsScreen(menuItem: _elimuQuestMenuItem),
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.local_fire_department_rounded,
-                      color: Colors.white,
-                      size: 40,
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFFFFA726),
+                        const Color(0xFFFF7043),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    const SizedBox(width: 16),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Elimu Quest',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Complete 3 science lessons to earn a badge!',
-                            style: TextStyle(fontSize: 14, color: Colors.white),
-                          ),
-                        ],
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
                       ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.local_fire_department_rounded,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Elimu Quest',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Complete 3 science lessons to earn a badge!',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ],
+                  ),
                 ),
               )
               .animate()
               .slideX(begin: 0.5, duration: 600.ms, curve: Curves.easeOutCubic)
               .shimmer(delay: 1000.ms, duration: 1800.ms),
     );
-  }
-
-  Widget _buildStatsSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Your Stats',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0D47A1),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem('Courses', '12'),
-                _buildStatItem('Progress', '75%'),
-                _buildStatItem('Points', '1,250'),
-                _buildStatItem('Avg Score', '88%'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF333333),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-        ),
-      ],
-    );
-  }
-
-  static const Map<String, double> subjectProgress = {
-    'Maths': 0.72,
-    'Science': 0.46,
-    'Coding': 0.9,
-    'Reading': 0.63,
-  };
-
-  Widget _buildLearningMapHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'Current Learning Areas',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0D47A1),
-            ),
-          ),
-          // Add a "See All" or similar option if needed
-          // TextButton(onPressed: () {}, child: Text('See All'))
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSubjectGrid() {
-    const subjects = [
-      {
-        'title': 'Maths',
-        'icon': Icons.calculate_rounded,
-        'color': Colors.lightBlue,
-      },
-      {
-        'title': 'Science',
-        'icon': Icons.science_rounded,
-        'color': Colors.green,
-      },
-      {'title': 'Coding', 'icon': Icons.code_rounded, 'color': Colors.purple},
-      {
-        'title': 'Reading',
-        'icon': Icons.auto_stories_rounded,
-        'color': Colors.orange,
-      },
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(28),
-        ),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: List.generate(subjects.length, (index) {
-              final subject = subjects[index];
-              return Container(
-                width: 160, // Fixed width for horizontal scrolling cards
-                margin: EdgeInsets.only(
-                  right: index == subjects.length - 1 ? 0 : 16,
-                ),
-                child: _buildSubjectCard(
-                  progress: subjectProgress[subject['title']] ?? 0.0,
-                  title: subject['title'] as String,
-                  icon: subject['icon'] as IconData,
-                  color: subject['color'] as Color,
-                  delay: (200 * (index + 1)).ms,
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubjectCard({
-    required double progress,
-    required String title,
-    required IconData icon,
-    required Color color,
-    required Duration delay,
-  }) {
-    final progressPercent = (progress * 100).round();
-
-    return Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withOpacity(0.18),
-                    blurRadius: 14,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.14),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(icon, size: 40, color: color),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF333333),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '$progressPercent% complete',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blueGrey.shade500,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 8,
-                        backgroundColor: color.withOpacity(0.18),
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Positioned(
-              top: 16,
-              right: 16,
-              child: _buildCompletionStatus(progress: progress),
-            ),
-          ],
-        )
-        .animate()
-        .fadeIn(delay: delay)
-        .scale(
-          begin: const Offset(0.92, 0.92),
-          duration: 500.ms,
-          curve: Curves.easeOutBack,
-        );
   }
 
   Widget _buildSupportSection() {
@@ -585,30 +421,6 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildCompletionStatus({required double progress}) {
-    final isDone = progress >= 0.85;
-
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: isDone ? Colors.green.shade600 : Colors.blueGrey.shade200,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Icon(
-        isDone ? Icons.check_rounded : Icons.pending_rounded,
-        size: 16,
-        color: Colors.white,
       ),
     );
   }
