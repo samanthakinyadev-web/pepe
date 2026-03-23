@@ -1,7 +1,11 @@
-import 'home_screen.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:loho_ebook_reader/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:loho_ebook_reader/screens/dashboard_screen.dart';
+import 'package:loho_ebook_reader/screens/parents/parent_dashboard.dart';
+import 'package:loho_ebook_reader/screens/teachers/teacher_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,9 +22,12 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
-  static const Color _primaryBlue = Color(0xFF36a4da);
-  static const Color _deepBlue = Color(0xFF0D5FBC);
-  static const Color _accentOrange = Color(0xFFe85021);
+  static const Color _primaryGreen = AppColors.brandGreen;
+  static const Color _accentOrange = AppColors.accentOrange;
+  static const Color _softBackground = AppColors.surfaceGray;
+  static const Color _cardBorder = AppColors.darkGray;
+  static const Color _textDark = AppColors.textMain;
+  static const Color _textMuted = AppColors.textMuted;
 
   @override
   void dispose() {
@@ -39,42 +46,67 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    final loginResult = await AuthService.instance.login(
-      email: _emailController.text,
-      password: _passwordController.text,
-    );
+    try {
+      final loginResult = await AuthService.instance.login(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
 
-    if (!mounted) {
-      return;
-    }
+      if (!mounted) {
+        return;
+      }
 
-    setState(() {
-      _isLoading = false;
-    });
+      setState(() {
+        _isLoading = false;
+      });
 
-    if (!loginResult.success) {
+      if (!loginResult.success) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(loginResult.message)));
+        return;
+      }
+
+      // Save basic dynamic info for the profile screen to read
+      final prefs = await SharedPreferences.getInstance();
+      final emailPrefix = _emailController.text.split('@').first;
+      final capitalizedName = emailPrefix.isNotEmpty
+          ? emailPrefix[0].toUpperCase() + emailPrefix.substring(1)
+          : 'Student';
+      await prefs.setString('user_name', capitalizedName);
+      await prefs.setString('user_email', _emailController.text);
+      await prefs.setString(
+        'loho_id',
+        'LOHO-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+      );
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => _routeForRole(loginResult)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(loginResult.message)));
-      return;
+      ).showSnackBar(SnackBar(content: Text('Login error: $e')));
+    }
+  }
+
+  Widget _routeForRole(LoginResult loginResult) {
+    final roleId = loginResult.roleId;
+    final roleName = loginResult.roleName?.toLowerCase();
+
+    if (roleId == 2 || roleName == 'teacher' || roleName == 'educator') {
+      return const TeacherDashboard();
     }
 
-    // Save basic dynamic info for the profile screen to read
-    final prefs = await SharedPreferences.getInstance();
-    final emailPrefix = _emailController.text.split('@').first;
-    final capitalizedName = emailPrefix.isNotEmpty
-        ? emailPrefix[0].toUpperCase() + emailPrefix.substring(1)
-        : 'Student';
-    await prefs.setString('user_name', capitalizedName);
-    await prefs.setString('user_email', _emailController.text);
-    await prefs.setString(
-      'loho_id',
-      'LOHO-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
-    );
+    if (roleId == 7 || roleName == 'parent' || roleName == 'guardian') {
+      return const ParentDashboard();
+    }
 
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+    return const GamifiedDashboardScreen();
   }
 
   @override
@@ -83,11 +115,12 @@ class _LoginScreenState extends State<LoginScreen> {
     final shortestSide = screenSize.shortestSide;
     final isTablet = shortestSide >= 600;
     final isLandscape = screenSize.width > screenSize.height;
-    final heroAspectRatio = isTablet ? (isLandscape ? 2.8 : 1.55) : 1.75;
+    final heroAspectRatio = isTablet ? (isLandscape ? 2.4 : 1.5) : 1.5;
     final heroFit = isTablet ? BoxFit.contain : BoxFit.cover;
+    final contentWidth = isTablet ? 560.0 : (screenSize.width - 48);
 
     return Scaffold(
-      backgroundColor: _deepBlue,
+      backgroundColor: _softBackground,
       body: Stack(
         children: [
           Positioned.fill(
@@ -96,8 +129,33 @@ class _LoginScreenState extends State<LoginScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [_primaryBlue, _deepBlue],
+                  // TODO: Update these colors to match fam1.png if needed
+                  colors: [AppColors.surfaceGray, Color(0xFFE8F6F3)],
                 ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: -120,
+            right: -80,
+            child: Container(
+              height: 220,
+              width: 220,
+              decoration: BoxDecoration(
+                color: _primaryGreen.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -140,
+            left: -60,
+            child: Container(
+              height: 260,
+              width: 260,
+              decoration: BoxDecoration(
+                color: _primaryGreen.withOpacity(0.06),
+                shape: BoxShape.circle,
               ),
             ),
           ),
@@ -108,164 +166,196 @@ class _LoginScreenState extends State<LoginScreen> {
                   physics: const ClampingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
-                    vertical: 12,
+                    vertical: 16,
                   ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Column(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: AspectRatio(
-                            aspectRatio: heroAspectRatio,
-                            child: Container(
-                              width: double.infinity,
-                              color: Colors.white.withOpacity(0.05),
-                              child: Image.asset(
-                                'assets/images/fam.png',
-                                fit: heroFit,
-                                alignment: isTablet
-                                    ? Alignment.center
-                                    : Alignment.topCenter,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Image.asset(
-                                    'assets/images/kid_reading.png',
-                                    fit: heroFit,
-                                    alignment: isTablet
-                                        ? Alignment.center
-                                        : Alignment.topCenter,
-                                  );
-                                },
-                              ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: isTablet ? 560 : double.infinity,
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildWavyHeader(
+                            isTablet: isTablet,
+                            heroAspectRatio: heroAspectRatio,
+                            heroFit: heroFit,
+                            contentWidth: contentWidth,
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Welcome back',
+                            style: TextStyle(
+                              color: _textDark,
+                              fontSize: 30,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.3,
                             ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Welcome Back!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 36,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Login to your account',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
-                            fontSize: 20,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              _buildInputCard(
-                                icon: Icons.email_outlined,
-                                label: 'Email',
-                                hint: 'Enter your email',
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                validator: (value) {
-                                  final text = value?.trim() ?? '';
-                                  if (text.isEmpty) {
-                                    return 'Email is required';
-                                  }
-                                  if (!text.contains('@')) {
-                                    return 'Enter a valid email address';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 14),
-                              _buildInputCard(
-                                icon: Icons.lock_outline,
-                                label: 'Password',
-                                hint: 'Enter your password',
-                                controller: _passwordController,
-                                isPassword: true,
-                                validator: (value) {
-                                  if ((value ?? '').isEmpty) {
-                                    return 'Password is required';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleLogin,
-                            style: ElevatedButton.styleFrom(
-                              elevation: 8,
-                              shadowColor: _deepBlue.withOpacity(0.4),
-                              backgroundColor: _accentOrange,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Sign in to continue reading with Elimu Pepe',
+                            style: TextStyle(
+                              color: _textMuted,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
                             ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    height: 24,
-                                    width: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.8,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Login',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: _cardBorder),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                children: [
+                                  _buildInputField(
+                                    icon: Icons.email_outlined,
+                                    label: 'Email address/loho ID',
+                                    hint: 'name@example.com',
+                                    controller: _emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                    validator: (value) {
+                                      final text = value?.trim() ?? '';
+                                      if (text.isEmpty) {
+                                        return 'Email is required';
+                                      }
+                                      if (!text.contains('@')) {
+                                        return 'Enter a valid email address';
+                                      }
+                                      return null;
+                                    },
                                   ),
+                                  const SizedBox(height: 14),
+                                  _buildInputField(
+                                    icon: Icons.lock_outline,
+                                    label: 'Password',
+                                    hint: 'Enter your password',
+                                    controller: _passwordController,
+                                    isPassword: true,
+                                    validator: (value) {
+                                      if ((value ?? '').isEmpty) {
+                                        return 'Password is required';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 18),
-                        TextButton(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Please contact admin for password reset.',
+                          const SizedBox(height: 18),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _handleLogin,
+                              style: ElevatedButton.styleFrom(
+                                elevation: 0,
+                                backgroundColor: AppColors.accentCoral,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
-                            );
-                          },
-                          child: Text(
-                            'Forgot Password?',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.95),
-                              fontSize: 16,
-                              decoration: TextDecoration.underline,
-                              decorationColor: Colors.white.withOpacity(0.95),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.6,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Login',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'No account yet? Contact Admin for access',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.92),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                          const SizedBox(height: 12),
+                          TextButton(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Please contact admin for password reset.',
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              'Forgot password?',
+                              style: TextStyle(
+                                color: _primaryGreen,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                      ],
+                          const SizedBox(height: 6),
+                          const Text(
+                            'No account yet? Contact admin for access',
+                            style: TextStyle(
+                              color: _textMuted,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () async {
+                              // TODO: Replace with your actual Privacy Policy URL from GitHub Pages
+                              final url = Uri.parse(
+                                'https://your-username.github.io/loho-reader-policy/',
+                              );
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(
+                                  url,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Could not open privacy policy.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text(
+                              'Privacy Policy',
+                              style: TextStyle(
+                                color: _textMuted,
+                                fontSize: 13,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -277,7 +367,86 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildInputCard({
+  Widget _buildWavyHeader({
+    required bool isTablet,
+    required double heroAspectRatio,
+    required BoxFit heroFit,
+    required double contentWidth,
+  }) {
+    final imageHeight = contentWidth / heroAspectRatio;
+    final headerHeight = imageHeight + (isTablet ? 92.0 : 76.0);
+    return SizedBox(
+      height: headerHeight,
+      child: Stack(
+        children: [
+          ClipPath(
+            clipper: _WavyHeaderClipper(),
+            child: Container(
+              decoration: const BoxDecoration(
+                // TODO: Update this hex color to exactly match the background color of fam1.png
+                color: Color(0xFFE8F6F3),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 14,
+            right: -8,
+            child: Container(
+              height: 90,
+              width: 90,
+              decoration: BoxDecoration(
+                color: _primaryGreen.withOpacity(0.10),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 24,
+            left: -24,
+            child: Container(
+              height: 120,
+              width: 120,
+              decoration: BoxDecoration(
+                color: _primaryGreen.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: SizedBox(
+                  height: imageHeight,
+                  width: double.infinity,
+                  child: Image.asset(
+                    'assets/images/fam1.png',
+                    fit: heroFit,
+                    alignment: isTablet
+                        ? Alignment.center
+                        : Alignment.topCenter,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/images/kid_reading.png',
+                        fit: heroFit,
+                        alignment: isTablet
+                            ? Alignment.center
+                            : Alignment.topCenter,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInputField({
     required IconData icon,
     required String label,
     required String hint,
@@ -286,83 +455,98 @@ class _LoginScreenState extends State<LoginScreen> {
     TextInputType keyboardType = TextInputType.text,
     bool isPassword = false,
   }) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: _deepBlue.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: isPassword ? _obscurePassword : false,
+      validator: validator,
+      style: const TextStyle(
+        color: _textDark,
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
       ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: const Color(0xFF5E6A82), size: 24),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Color(0xFF3C4A63),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon, color: _textMuted),
+        suffixIcon: isPassword
+            ? IconButton(
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+                icon: Icon(
+                  _obscurePassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: _textMuted,
                 ),
-              ),
-              if (isPassword) const Spacer(),
-              if (isPassword)
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
-                  child: Icon(
-                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                    color: const Color(0xFF5E6A82),
-                    size: 22,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: controller,
-            keyboardType: keyboardType,
-            obscureText: isPassword ? _obscurePassword : false,
-            validator: validator,
-            style: const TextStyle(
-              color: Color(0xFF2A3650),
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
-            decoration: InputDecoration(
-              isDense: true,
-              hintText: hint,
-              hintStyle: const TextStyle(
-                color: Color(0xFF95A1B7),
-                fontSize: 17,
-              ),
-              enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFFD7DDE8), width: 1.4),
-              ),
-              focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: _primaryBlue, width: 2.0),
-              ),
-              errorBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: _accentOrange, width: 1.8),
-              ),
-              focusedErrorBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: _accentOrange, width: 2.0),
-              ),
-            ),
-          ),
-        ],
+              )
+            : null,
+        filled: true,
+        fillColor: const Color(0xFFF7FAF7),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _cardBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _cardBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _primaryGreen, width: 1.8),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _accentOrange, width: 1.2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _accentOrange, width: 1.6),
+        ),
+        labelStyle: const TextStyle(
+          color: _textMuted,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
+}
+
+class _WavyHeaderClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.lineTo(0, size.height * 0.72);
+    path.quadraticBezierTo(
+      size.width * 0.18,
+      size.height * 0.88,
+      size.width * 0.38,
+      size.height * 0.78,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.62,
+      size.height * 0.65,
+      size.width * 0.82,
+      size.height * 0.74,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.95,
+      size.height * 0.8,
+      size.width,
+      size.height * 0.7,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(_WavyHeaderClipper oldClipper) => false;
 }

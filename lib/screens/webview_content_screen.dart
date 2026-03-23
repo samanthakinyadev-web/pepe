@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:loho_ebook_reader/theme/app_theme.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class WebViewContentScreen extends StatefulWidget {
@@ -50,7 +51,7 @@ class _WebViewContentScreenState extends State<WebViewContentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF32a5d7),
+        backgroundColor: AppColors.lightGreen,
         title: Text(
           widget.title,
           maxLines: 1,
@@ -62,7 +63,7 @@ class _WebViewContentScreenState extends State<WebViewContentScreen> {
           WebViewWidget(controller: _controller),
           if (_isLoading)
             const Center(
-              child: CircularProgressIndicator(color: Color(0xFFe85021)),
+              child: CircularProgressIndicator(color: AppColors.lightGreen),
             ),
         ],
       ),

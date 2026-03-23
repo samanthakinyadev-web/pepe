@@ -1,10 +1,9 @@
 import 'dart:io';
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-
 import '../models/ebook.dart';
 import 'database_service.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 class StorageService {
   StorageService._internal();
@@ -19,12 +18,15 @@ class StorageService {
   // Assign category based on filename
   String _assignCategory(String fileName) {
     final fileNameLower = fileName.toLowerCase();
-    
-    if (fileNameLower.contains('revision') || fileNameLower.contains('revise')) {
+
+    if (fileNameLower.contains('revision') ||
+        fileNameLower.contains('revise')) {
       return 'Revision Books';
-    } else if (fileNameLower.contains('reader') || fileNameLower.contains('story')) {
+    } else if (fileNameLower.contains('reader') ||
+        fileNameLower.contains('story')) {
       return 'Readers';
-    } else if (fileNameLower.contains('reference') || fileNameLower.contains('dict')) {
+    } else if (fileNameLower.contains('reference') ||
+        fileNameLower.contains('dict')) {
       return 'Reference Books';
     } else {
       // Default to Textbooks for LB, worksheet, activities, etc.
@@ -36,12 +38,12 @@ class StorageService {
   Future<Directory> getEbooksDirectory() async {
     final appDocDir = await getApplicationDocumentsDirectory();
     final ebooksDir = Directory('${appDocDir.path}/ebooks');
-    
+
     // Create directory if it doesn't exist
     if (!await ebooksDir.exists()) {
       await ebooksDir.create(recursive: true);
     }
-    
+
     return ebooksDir;
   }
 
@@ -120,7 +122,10 @@ class StorageService {
   }
 
   // Copy bundled ebooks from grade folders to app storage
-  Future<void> copyBundledEbooksToStorage(DatabaseService databaseService) async {
+  Future<void> copyBundledEbooksToStorage(
+    DatabaseService databaseService, {
+    String? targetGrade,
+  }) async {
     try {
       final ebooksDir = await getEbooksDirectory();
 
@@ -152,25 +157,38 @@ class StorageService {
       // Process each grade
       for (var entry in gradeBooks.entries) {
         final gradeNum = entry.key;
+
+        // Filter by targeted grade if provided
+        if (targetGrade != null) {
+          final normalizedTarget = targetGrade.toLowerCase().trim();
+          final expectedGrade = 'grade $gradeNum';
+          if (normalizedTarget != expectedGrade &&
+              normalizedTarget != gradeNum.toString()) {
+            continue; // Skip books that don't match the learner's grade
+          }
+        }
+
         final pdfFiles = entry.value;
 
         for (final fileName in pdfFiles) {
-          final assetPath = 'android/app/src/main/assets/ebooks/grade$gradeNum/$fileName';
+          final assetPath =
+              'android/app/src/main/assets/ebooks/grade$gradeNum/$fileName';
           final destination = File(p.join(ebooksDir.path, fileName));
 
           // Copy asset to app storage
           try {
             final data = await rootBundle.load(assetPath);
             await destination.writeAsBytes(data.buffer.asUint8List());
-            
+
             final fileSize = await destination.length();
-            
+
             // Try to copy matching thumbnail image if it exists
             final baseName = p.basenameWithoutExtension(fileName);
             String? coverImagePath;
             for (final ext in ['.jpg', '.jpeg', '.png']) {
               try {
-                final imageAssetPath = 'android/app/src/main/assets/ebooks/grade$gradeNum/$baseName$ext';
+                final imageAssetPath =
+                    'android/app/src/main/assets/ebooks/grade$gradeNum/$baseName$ext';
                 final imageData = await rootBundle.load(imageAssetPath);
                 final imageDest = File(p.join(ebooksDir.path, '$baseName$ext'));
                 await imageDest.writeAsBytes(imageData.buffer.asUint8List());
@@ -185,7 +203,8 @@ class StorageService {
             // Register in database with grade and category
             final ebook = Ebook(
               id: fileName,
-              title: p.basenameWithoutExtension(fileName)
+              title: p
+                  .basenameWithoutExtension(fileName)
                   .replaceAll('_', ' ')
                   .replaceAll('-', ' ')
                   .trim(),

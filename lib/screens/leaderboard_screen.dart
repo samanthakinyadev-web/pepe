@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:loho_ebook_reader/theme/app_theme.dart';
 import '../services/php_api_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -89,13 +90,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           style: TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF0D47A1),
+            color: AppColors.brandGreen,
           ),
         ),
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFe85021)))
+          ? const Center(child: CircularProgressIndicator(color: AppColors.lightGreen))
           : ListView.builder(
         padding: const EdgeInsets.all(20),
         itemCount: _users.length,
@@ -104,7 +105,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           final isTop3 = index < 3;
 
           Color cardColor = Colors.white;
-          Color rankColor = const Color(0xFF36a4da);
+          Color rankColor = AppColors.lightGreen;
 
           if (index == 0) {
             rankColor = Colors.amber.shade400; // Gold
@@ -173,7 +174,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFe85021),
+                          color: AppColors.lightGreen,
                         ),
                       ),
                       const SizedBox(width: 4),

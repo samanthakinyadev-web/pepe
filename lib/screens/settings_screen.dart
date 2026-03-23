@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:loho_ebook_reader/theme/app_theme.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -31,7 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        backgroundColor: const Color(0xFF32a5d7),
+        backgroundColor: AppColors.lightGreen,
         elevation: 0,
       ),
       body: ListView(

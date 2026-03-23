@@ -1,6 +1,7 @@
 import '../models/menu_item.dart';
 import 'webview_content_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:loho_ebook_reader/theme/app_theme.dart';
 import '../services/learner_dashboard_api_service.dart';
 
 class CategoryItemsScreen extends StatefulWidget {
@@ -26,17 +27,17 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF32a5d7),
+      backgroundColor: AppColors.lightGreen,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFF32a5d7),
+        backgroundColor: AppColors.lightGreen,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
           children: [
-            Text(widget.menuItem.icon, style: const TextStyle(fontSize: 24)),
+            Icon(widget.menuItem.icon, size: 24, color: Colors.white),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -62,7 +63,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(widget.menuItem.icon, style: const TextStyle(fontSize: 80)),
+          Icon(widget.menuItem.icon, size: 80, color: Colors.white),
           const SizedBox(height: 24),
           const Text(
             'Coming Soon!',
@@ -92,7 +93,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
-            child: CircularProgressIndicator(color: Color(0xFFe85021)),
+            child: CircularProgressIndicator(color: AppColors.lightGreen),
           );
         }
 
@@ -135,7 +136,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
                     icon: const Icon(Icons.refresh),
                     label: const Text('Retry'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFe85021),
+                      backgroundColor: AppColors.lightGreen,
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -195,17 +196,18 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
                   vertical: 10,
                 ),
                 leading: CircleAvatar(
-                  backgroundColor: const Color(0xFF36a4da).withOpacity(0.15),
-                  child: Text(
+                  backgroundColor: AppColors.lightGreen.withOpacity(0.15),
+                  child: Icon(
                     widget.menuItem.icon,
-                    style: const TextStyle(fontSize: 16),
+                    size: 20,
+                    color: AppColors.lightGreen,
                   ),
                 ),
                 title: Text(
                   title,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF214A7A),
+                    color: AppColors.brandGreen,
                     fontSize: 15,
                   ),
                 ),

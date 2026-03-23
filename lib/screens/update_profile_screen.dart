@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:loho_ebook_reader/theme/app_theme.dart';
 import '../services/user_data_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -87,7 +88,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF0D47A1),
+                  color: AppColors.brandGreen,
                 ),
               ),
               const SizedBox(height: 24),
@@ -115,7 +116,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: isSelected
-                              ? const Color(0xFF36a4da)
+                              ? AppColors.lightGreen
                               : Colors.transparent,
                           width: 4,
                         ),
@@ -141,7 +142,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       builder: (context) => AlertDialog(
         title: const Text(
           'Delete Account',
-          style: TextStyle(color: Color(0xFFe85021)),
+          style: TextStyle(color: AppColors.lightGreen),
         ),
         content: const Text(
           'Are you sure you want to delete your account? This action is permanent and cannot be undone.',
@@ -153,7 +154,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFe85021),
+              backgroundColor: AppColors.lightGreen,
             ),
             onPressed: () {
               // TODO: Implement account deletion logic
@@ -176,13 +177,13 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFFF0F8FF),
-        iconTheme: const IconThemeData(color: Color(0xFF0D47A1)),
+        iconTheme: const IconThemeData(color: AppColors.brandGreen),
         title: const Text(
           'Update Profile',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF0D47A1),
+            color: AppColors.brandGreen,
           ),
         ),
         centerTitle: true,
@@ -203,7 +204,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: const Color(0xFF36a4da),
+                          color: AppColors.lightGreen,
                           width: 3,
                         ),
                       ),
@@ -220,7 +221,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: const BoxDecoration(
-                            color: Color(0xFFe85021),
+                            color: AppColors.lightGreen,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -276,7 +277,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                 height: 55,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF36a4da),
+                    backgroundColor: AppColors.lightGreen,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -303,12 +304,12 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0D47A1).withOpacity(0.1),
+                    color: AppColors.brandGreen.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.lock_outline_rounded,
-                    color: Color(0xFF0D47A1),
+                    color: AppColors.brandGreen,
                   ),
                 ),
                 title: const Text(
@@ -326,24 +327,24 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFe85021).withOpacity(0.1),
+                    color: AppColors.lightGreen.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.delete_outline_rounded,
-                    color: Color(0xFFe85021),
+                    color: AppColors.lightGreen,
                   ),
                 ),
                 title: const Text(
                   'Delete Account',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFFe85021),
+                    color: AppColors.lightGreen,
                   ),
                 ),
                 trailing: const Icon(
                   Icons.chevron_right_rounded,
-                  color: Color(0xFFe85021),
+                  color: AppColors.lightGreen,
                 ),
                 onTap: _showDeleteConfirmation,
               ),
@@ -361,7 +362,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       style: const TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF0D47A1),
+        color: AppColors.brandGreen,
       ),
     );
   }

@@ -1,7 +1,10 @@
+import 'package:flutter/widgets.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 class MenuItem {
   final String id;
   final String title;
-  final String icon;
+  final IconData icon;
   final bool isComingSoon;
   final String? apiEndpoint; // Will be configured later
 
@@ -19,73 +22,73 @@ class MenuItem {
       MenuItem(
         id: 'learning_areas',
         title: 'My Learning Areas',
-        icon: '📚',
+        icon: FontAwesomeIcons.bookOpen,
         isComingSoon: false,
       ),
       MenuItem(
         id: 'interactive_books',
         title: 'Interactive Books',
-        icon: '🎮',
+        icon: FontAwesomeIcons.laptopCode,
         isComingSoon: false,
       ),
       MenuItem(
         id: 'non_interactive_books',
         title: 'Non-Interactive Books',
-        icon: '📖',
+        icon: FontAwesomeIcons.book,
         isComingSoon: false,
       ),
       MenuItem(
         id: 'data_learning',
         title: 'Dals Learning',
-        icon: '📊',
+        icon: FontAwesomeIcons.chartSimple,
         isComingSoon: false,
       ),
       MenuItem(
         id: 'esoma_kids',
         title: 'Esoma Kids',
-        icon: '⭐',
+        icon: FontAwesomeIcons.childReaching,
         isComingSoon: false,
       ),
       MenuItem(
         id: 'virtual_labs',
         title: 'Virtual Labs',
-        icon: '🔬',
+        icon: FontAwesomeIcons.flask,
         isComingSoon: false,
       ),
       MenuItem(
         id: 'elimu_quest',
         title: 'Elimu Quest',
-        icon: '🎯',
+        icon: FontAwesomeIcons.flag,
         isComingSoon: false,
       ),
       MenuItem(
         id: 'leaderboard',
         title: 'Leaderboard',
-        icon: '🏆',
+        icon: FontAwesomeIcons.trophy,
         isComingSoon: false,
       ),
       MenuItem(
         id: 'loho_tv',
         title: 'Loho TV',
-        icon: '📺',
+        icon: FontAwesomeIcons.tv,
         isComingSoon: false,
       ),
       MenuItem(
         id: 'live_classes',
         title: 'Live Classes',
-        icon: '🎓',
+        icon: FontAwesomeIcons.graduationCap,
         isComingSoon: true,
       ),
       MenuItem(
         id: 'games',
         title: 'Games',
-        icon: '🎮',
+        icon: FontAwesomeIcons.gamepad,
         isComingSoon: false,
       ),
       MenuItem(
         id: 'my_questions',
         title: 'My Questions',
-        icon: '❓',
+        icon: FontAwesomeIcons.circleQuestion,
         isComingSoon: false,
       ),
     ];

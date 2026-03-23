@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:loho_ebook_reader/theme/app_theme.dart';
 import '../services/user_data_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -52,17 +53,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         title: const Text(
           'Notifications',
           style: TextStyle(
-            color: Color(0xFF0D47A1),
+            color: AppColors.brandGreen,
             fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: const Color(0xFFF0F8FF),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF0D47A1)),
+        iconTheme: const IconThemeData(color: AppColors.brandGreen),
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFFe85021)),
+              child: CircularProgressIndicator(color: AppColors.lightGreen),
             )
           : _notifications.isEmpty
           ? const Center(
@@ -84,12 +85,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isUnread
-                        ? const Color(0xFFe85021).withOpacity(0.05)
+                        ? AppColors.lightGreen.withOpacity(0.05)
                         : Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isUnread
-                          ? const Color(0xFFe85021).withOpacity(0.3)
+                          ? AppColors.lightGreen.withOpacity(0.3)
                           : Colors.grey.shade200,
                     ),
                   ),
@@ -97,13 +98,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     children: [
                       CircleAvatar(
                         backgroundColor: isUnread
-                            ? const Color(0xFFe85021).withOpacity(0.2)
+                            ? AppColors.lightGreen.withOpacity(0.2)
                             : const Color(0xFFF0F8FF),
                         child: Icon(
                           Icons.notifications_rounded,
                           color: isUnread
-                              ? const Color(0xFFe85021)
-                              : const Color(0xFF36a4da),
+                              ? AppColors.lightGreen
+                              : AppColors.lightGreen,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -128,7 +129,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   notification['time'] ?? '',
                                   style: TextStyle(
                                     color: isUnread
-                                        ? const Color(0xFFe85021)
+                                        ? AppColors.lightGreen
                                         : Colors.grey.shade500,
                                     fontSize: 12,
                                     fontWeight: isUnread

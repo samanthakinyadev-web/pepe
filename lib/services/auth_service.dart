@@ -4,8 +4,15 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class LoginResult {
   final bool success;
   final String message;
+  final int? roleId;
+  final String? roleName;
 
-  const LoginResult({required this.success, required this.message});
+  const LoginResult({
+    required this.success,
+    required this.message,
+    this.roleId,
+    this.roleName,
+  });
 }
 
 class AuthService {
@@ -18,6 +25,14 @@ class AuthService {
   static const String _passportTokenKey = 'passport_token';
   static const String _emailKey = 'auth_email';
   static const String _userIdKey = 'auth_user_id';
+  static const Set<int> _allowedRoleIds = {2, 3, 7};
+  static const Set<String> _allowedRoleNames = {
+    'student',
+    'parent',
+    'teacher',
+    'guardian',
+    'educator',
+  };
 
   final Dio _dio = Dio(
     BaseOptions(
@@ -42,10 +57,7 @@ class AuthService {
       final normalizedEmail = email.trim();
       Response<dynamic> response = await _dio.post(
         '/v1/auth/login',
-        data: {
-          'email': normalizedEmail,
-          'password': password,
-        },
+        data: {'email': normalizedEmail, 'password': password},
         options: Options(validateStatus: (_) => true),
       );
 
@@ -54,18 +66,15 @@ class AuthService {
       if (_hasMultipleLoginConflict(response.data)) {
         response = await _dio.post(
           '/v1/auth/login',
-          data: {
-            'email': normalizedEmail,
-            'password': password,
-            'force': true,
-          },
+          data: {'email': normalizedEmail, 'password': password, 'force': true},
           options: Options(validateStatus: (_) => true),
         );
       }
 
       if (response.statusCode != 200) {
         final message =
-            _extractErrorMessage(response.data) ?? 'Login failed. Please check your credentials.';
+            _extractErrorMessage(response.data) ??
+            'Login failed. Please check your credentials.';
         return LoginResult(success: false, message: message);
       }
 
@@ -88,24 +97,33 @@ class AuthService {
       }
 
       final roleId = _extractRoleId(user);
+      final roleName = _extractRoleName(user);
 
-      if (roleId != null && roleId != 3) {
+      if (!_isAllowedRole(roleId: roleId, roleName: roleName)) {
         return const LoginResult(
           success: false,
           message:
-              'Access denied. This app is only available to student accounts.',
+              'Access denied. This app is available to student, parent, and teacher accounts.',
         );
       }
 
       await _secureStorage.write(key: _tokenKey, value: token);
       await _secureStorage.write(key: _passportTokenKey, value: token);
-      await _secureStorage.write(key: _emailKey, value: user['email'] ?? normalizedEmail);
+      await _secureStorage.write(
+        key: _emailKey,
+        value: user['email'] ?? normalizedEmail,
+      );
       await _secureStorage.write(
         key: _userIdKey,
         value: user['id']?.toString() ?? '',
       );
 
-      return const LoginResult(success: true, message: 'Login successful');
+      return LoginResult(
+        success: true,
+        message: 'Login successful',
+        roleId: roleId,
+        roleName: roleName,
+      );
     } on DioException catch (e) {
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
         return const LoginResult(
@@ -134,9 +152,7 @@ class AuthService {
       try {
         await _dio.get(
           '/v1/auth/logout',
-          options: Options(
-            headers: {'Authorization': 'Bearer $token'},
-          ),
+          options: Options(headers: {'Authorization': 'Bearer $token'}),
         );
       } catch (_) {
         // Ignore remote logout errors and proceed with local token cleanup.
@@ -178,6 +194,32 @@ class AuthService {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<Map<String, dynamic>> getCurrentUser() async {
+    final token = await getToken();
+    if (token != null && token.isNotEmpty) {
+      final fetchedUser = await _fetchCurrentUser(token);
+      if (fetchedUser.isNotEmpty) {
+        return fetchedUser;
+      }
+    }
+
+    final email = await _secureStorage.read(key: _emailKey);
+    final userId = await _secureStorage.read(key: _userIdKey);
+
+    if ((email != null && email.isNotEmpty) ||
+        (userId != null && userId.isNotEmpty)) {
+      final parsedId = userId != null && userId.isNotEmpty
+          ? int.tryParse(userId) ?? userId
+          : null;
+      return {
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (parsedId != null) 'id': parsedId,
+      };
+    }
+
+    return {};
   }
 
   String? _extractToken(dynamic payload) {
@@ -242,7 +284,9 @@ class AuthService {
     }
 
     final multipleLogin =
-        payload['multipleLogin'] ?? payload['multiple_login'] ?? payload['multiple_login_error'];
+        payload['multipleLogin'] ??
+        payload['multiple_login'] ??
+        payload['multiple_login_error'];
     if (multipleLogin is bool) {
       return multipleLogin;
     }
@@ -274,6 +318,47 @@ class AuthService {
       return int.tryParse(roleRaw);
     }
     return null;
+  }
+
+  String? _extractRoleName(Map<String, dynamic> user) {
+    final direct = user['role_name'] ?? user['roleName'] ?? user['role'];
+    if (direct is String && direct.trim().isNotEmpty) {
+      return direct.trim().toLowerCase();
+    }
+
+    if (direct is Map<String, dynamic>) {
+      final nested =
+          direct['name'] ??
+          direct['slug'] ??
+          direct['title'] ??
+          direct['label'];
+      if (nested is String && nested.trim().isNotEmpty) {
+        return nested.trim().toLowerCase();
+      }
+    }
+
+    final type = user['role_type'] ?? user['roleType'];
+    if (type is String && type.trim().isNotEmpty) {
+      return type.trim().toLowerCase();
+    }
+
+    return null;
+  }
+
+  bool _isAllowedRole({int? roleId, String? roleName}) {
+    if (roleId == null && (roleName == null || roleName.isEmpty)) {
+      return true;
+    }
+
+    if (roleId != null && _allowedRoleIds.contains(roleId)) {
+      return true;
+    }
+
+    if (roleName != null && _allowedRoleNames.contains(roleName)) {
+      return true;
+    }
+
+    return false;
   }
 
   Future<Map<String, dynamic>> _fetchCurrentUser(String token) async {

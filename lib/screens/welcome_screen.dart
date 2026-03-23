@@ -77,7 +77,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               onPressed: _navigateToLogin,
               child: Text(
                 "Skip",
-                style: TextStyle(color: AppColors.primaryBlue, fontSize: 16),
+                style: TextStyle(color: AppColors.lightGreen, fontSize: 16),
               ),
             ),
           ),
@@ -202,7 +202,7 @@ class _WelcomePageState extends State<WelcomePage>
       topWidget = Icon(
         widget.icon ?? Icons.school,
         size: 100,
-        color: AppColors.primaryBlue,
+        color: AppColors.brandGreen,
       );
     }
 

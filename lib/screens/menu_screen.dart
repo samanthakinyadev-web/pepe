@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:loho_ebook_reader/theme/app_theme.dart';
 import 'package:loho_ebook_reader/models/menu_item.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:loho_ebook_reader/screens/category_items_screen.dart';
 
 class MenuScreen extends StatelessWidget {
@@ -22,7 +24,7 @@ class MenuScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF0D47A1),
+                  color: AppColors.accentYellow,
                   letterSpacing: -0.5,
                 ),
               ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2),
@@ -84,13 +86,23 @@ class _MenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDisabled = item.isComingSoon;
 
+    // Create a vibrant palette to cycle through for the tiles
+    final List<Color> tileColors = [
+      AppColors.primaryBlue,
+      AppColors.brandGreen,
+      AppColors.accentOrange,
+      AppColors.accentPurple,
+      AppColors.accentCoral,
+    ];
+    final Color itemColor = tileColors[item.title.hashCode % tileColors.length];
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.08),
+            color: Colors.black.withOpacity(0.04), // Softer, neutral shadow
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -102,8 +114,8 @@ class _MenuTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(24),
-          splashColor: Colors.blue.withOpacity(0.1),
-          highlightColor: Colors.blue.withOpacity(0.05),
+          splashColor: itemColor.withOpacity(0.15),
+          highlightColor: itemColor.withOpacity(0.05),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
             child: Column(
@@ -114,17 +126,13 @@ class _MenuTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isDisabled
                         ? Colors.grey.shade100
-                        : Colors.blue.shade50,
+                        : itemColor.withOpacity(0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: Text(
+                  child: FaIcon(
                     item.icon,
-                    style: TextStyle(
-                      fontSize: 28,
-                      color: isDisabled
-                          ? Colors.blueGrey.shade300
-                          : Colors.blue.shade700,
-                    ),
+                    size: 28,
+                    color: isDisabled ? Colors.blueGrey.shade300 : itemColor,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -136,9 +144,7 @@ class _MenuTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: isDisabled
-                        ? Colors.blueGrey.shade400
-                        : const Color(0xFF0D47A1),
+                    color: isDisabled ? Colors.blueGrey.shade400 : itemColor,
                   ),
                 ),
                 if (isDisabled) ...[

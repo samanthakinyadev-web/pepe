@@ -1,7 +1,9 @@
 import 'dart:typed_data';
 import '../models/ebook.dart';
+import 'package:dio/dio.dart';
 import '../models/menu_item.dart';
 import 'package:flutter/material.dart';
+import 'package:loho_ebook_reader/theme/app_theme.dart';
 import '../screens/reader_screen.dart';
 import '../screens/settings_screen.dart';
 import '../services/storage_service.dart';
@@ -16,6 +18,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../services/learner_dashboard_api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:loho_ebook_reader/screens/dashboard_screen.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.scaffoldKey});
@@ -26,37 +29,61 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   final DatabaseService _databaseService = DatabaseService.instance;
   final StorageService _storageService = StorageService.instance;
   final PhpApiService _apiService = PhpApiService.instance;
   final CloudSyncServicePhp _cloudSyncService = CloudSyncServicePhp.instance;
 
   late final GlobalKey<ScaffoldState> _scaffoldKey;
+  late AnimationController _drawerController;
 
   late Future<List<Ebook>> _ebooksFuture;
   late Future<List<Ebook>> _cloudBooksFuture;
   String _searchQuery = '';
-  String? _selectedGrade;
-  String? _selectedCategory;
+  final TextEditingController _searchController = TextEditingController();
+  String? _selectedCourse;
+  List<String> _studentCourses = [
+    'PP1',
+    'PP2',
+    'Grade 1',
+    'Grade 2',
+    'Grade 3',
+    'Grade 4',
+    'Grade 5',
+    'Grade 6',
+    'Grade 7',
+    'Grade 8',
+    'Grade 9',
+    'Grade 10',
+    'Grade 11',
+    'Grade 12',
+  ];
+  String? _selectedPublisher;
   final bool _showFilters = false;
   // Use ValueNotifier for each download to avoid full page rebuilds
   final Map<String, ValueNotifier<double>> _downloadProgress =
       {}; // Track download progress per book ID
 
-  // Categories list
-  final List<String> _categories = [
-    'Textbooks',
-    'Revision Books',
-    'Readers',
-    'Reference Books',
+  // Publishers list
+  final List<String> _publishers = [
+    'Longhorn Publishers',
+    'KLB',
+    'Moran Publishers',
+    'EAEP',
   ];
 
   @override
   void initState() {
     super.initState();
     _scaffoldKey = widget.scaffoldKey ?? GlobalKey<ScaffoldState>();
+    _drawerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
     _syncAndLoadBooks();
+    _loadStudentCourses();
 
     // Check for daily reward after the first frame renders
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -66,11 +93,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _drawerController.dispose();
     // Clean up ValueNotifiers to prevent memory leaks
     for (var notifier in _downloadProgress.values) {
       notifier.dispose();
     }
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _toggleDrawer() {
+    if (_drawerController.isDismissed) {
+      _drawerController.forward();
+    } else {
+      _drawerController.reverse();
+    }
   }
 
   Future<void> _checkDailyReward() async {
@@ -106,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
           '🌟 Daily Reward! h🌟',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Color(0xFFe85021),
+            color: AppColors.lightGreen,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -119,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 .shake(hz: 4, curve: Curves.easeInOut),
             const SizedBox(height: 16),
             const Text(
-              'Welcome back! You earned 50 Bonus Points for logging in today!',
+              'Welcome back! You earn Elimu quest Pointstoday!',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.black87),
             ),
@@ -129,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Center(
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF35a3d9),
+                backgroundColor: AppColors.lightGreen,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
                 ),
@@ -177,8 +214,128 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _loadCloudBooks() {
     setState(() {
-      _cloudBooksFuture = _cloudSyncService.getAvailableCloudBooks();
+      _cloudBooksFuture = _fetchLearnerTextbooks();
     });
+  }
+
+  Future<List<Ebook>> _fetchLearnerTextbooks() async {
+    try {
+      const storage = FlutterSecureStorage();
+      final token = await storage.read(key: 'auth_token');
+
+      List<Ebook> cloudBooks = [];
+
+      if (token != null) {
+        final dio = Dio();
+        final response = await dio.get(
+          'https://elimupepe.loholearning.co.ke/api/student/books',
+          options: Options(headers: {'Authorization': 'Bearer $token'}),
+        );
+
+        if (response.statusCode == 200) {
+          final data = response.data['data'] ?? response.data;
+          if (data is List) {
+            cloudBooks = data.map((json) {
+              return Ebook(
+                id: json['id']?.toString() ?? '',
+                title: json['title'] ?? '',
+                author: json['author'] ?? json['publisher'] ?? 'Unknown Author',
+                serverUrl:
+                    json['pdf_url'] ?? json['file_url'] ?? json['url'] ?? '',
+                fileSize: json['file_size'] is int
+                    ? json['file_size']
+                    : int.tryParse(json['file_size']?.toString() ?? '0') ?? 0,
+                downloadedDate: null,
+                grade:
+                    json['grade']?.toString() ??
+                    json['course']?.toString() ??
+                    '',
+                category: json['category'] ?? 'Textbooks',
+                coverImagePath: json['cover_url'] ?? json['thumbnail_url'],
+                totalPages: json['pages'] ?? json['total_pages'] ?? 0,
+                isDownloaded: false,
+              );
+            }).toList();
+          }
+        }
+      }
+
+      if (cloudBooks.isEmpty) {
+        cloudBooks = await _apiService.getBooksByCategory('Textbooks');
+      }
+
+      final localBooks = await _databaseService.getAllEbooks();
+      final localBookIds = localBooks.map((b) => b.id).toSet();
+      return cloudBooks
+          .where((book) => !localBookIds.contains(book.id))
+          .toList();
+    } catch (e) {
+      debugPrint('Error fetching learner textbooks: $e');
+      return _apiService.getBooksByCategory('Textbooks');
+    }
+  }
+
+  Future<void> _loadStudentCourses() async {
+    try {
+      const storage = FlutterSecureStorage();
+      final token = await storage.read(key: 'auth_token');
+      if (token == null) {
+        _setFallbackCourses();
+        return;
+      }
+
+      final dio = Dio();
+      final response = await dio.get(
+        'https://elimupepe.loholearning.co.ke/api/student/courses',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'] ?? response.data;
+        if (data is List) {
+          if (mounted) {
+            setState(() {
+              _studentCourses = data
+                  .map(
+                    (c) =>
+                        c['name']?.toString() ??
+                        c['title']?.toString() ??
+                        'Unknown',
+                  )
+                  .where((c) => c != 'Unknown')
+                  .toList();
+
+              // Automatically filter by the child's current grade from the API
+              if (_selectedCourse == null && _studentCourses.isNotEmpty) {
+                _selectedCourse = _studentCourses.first;
+
+                // Add bundled offline books to the database specifically for the learner's grade
+                _storageService
+                    .copyBundledEbooksToStorage(
+                      _databaseService,
+                      targetGrade: _selectedCourse,
+                    )
+                    .then((_) {
+                      if (mounted)
+                        _loadEbooks(); // Refresh the database list in the UI
+                    });
+              }
+            });
+          }
+          return;
+        }
+      }
+      _setFallbackCourses();
+    } catch (e) {
+      debugPrint('Error fetching courses dynamically: $e');
+      _setFallbackCourses();
+    }
+  }
+
+  void _setFallbackCourses() {
+    // Keeps the fallback grades if API fails so the UI doesn't break
+    // Handled inherently by the initial values, but we can call it to refresh
+    // if loading states are added later.
   }
 
   String _normalizeGrade(String grade) {
@@ -256,54 +413,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showSearchDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Search Books'),
-        content: TextField(
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: 'Enter book title or author...',
-            prefixIcon: const Icon(Icons.search, color: Color(0xFF36a4da)),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: Color(0xFFe85021),
-                width: 1.5,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFe85021), width: 2),
-            ),
-          ),
-          onSubmitted: (value) {
-            setState(() {
-              _searchQuery = value;
-            });
-            Navigator.pop(context);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _searchQuery = '';
-              });
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Clear',
-              style: TextStyle(color: Color(0xFFe85021)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _handleCategoryTap(MenuItem item) async {
     if (item.isComingSoon) return;
 
@@ -362,8 +471,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showFilterSheet() {
-    String? tempGrade = _selectedGrade;
-    String? tempCategory = _selectedCategory;
+    String? tempCourse = _selectedCourse;
+    String? tempPublisher = _selectedPublisher;
 
     showModalBottomSheet(
       context: context,
@@ -389,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF36a4da),
+                        color: AppColors.lightGreen,
                       ),
                     ),
                     GestureDetector(
@@ -397,7 +506,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: const Icon(
                         Icons.close,
                         size: 28,
-                        color: Color(0xFF36a4da),
+                        color: AppColors.lightGreen,
                       ),
                     ),
                   ],
@@ -405,8 +514,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 28),
 
                 // Grades Section
-                const Text(
-                  'Select Grade',
+                Text(
+                  _studentCourses.isNotEmpty ? 'Select Course' : 'Select Grade',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -417,64 +526,48 @@ class _HomeScreenState extends State<HomeScreen> {
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
-                  children:
-                      [
-                        'PP1',
-                        'PP2',
-                        'Grade 1',
-                        'Grade 2',
-                        'Grade 3',
-                        'Grade 4',
-                        'Grade 5',
-                        'Grade 6',
-                        'Grade 7',
-                        'Grade 8',
-                        'Grade 9',
-                        'Grade 10',
-                        'Grade 11',
-                        'Grade 12',
-                      ].map((grade) {
-                        final isSelected = tempGrade == grade;
-                        return GestureDetector(
-                          onTap: () {
-                            setModalState(() {
-                              tempGrade = isSelected ? null : grade;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFFe85021)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(25),
-                              border: Border.all(
-                                color: const Color(0xFFe85021),
-                                width: 2,
-                              ),
-                            ),
-                            child: Text(
-                              grade,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected
-                                    ? Colors.white
-                                    : const Color(0xFF36a4da),
-                              ),
-                            ),
+                  children: _studentCourses.map((course) {
+                    final isSelected = tempCourse == course;
+                    return GestureDetector(
+                      onTap: () {
+                        setModalState(() {
+                          tempCourse = isSelected ? null : course;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.lightGreen
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(25),
+                          border: Border.all(
+                            color: AppColors.lightGreen,
+                            width: 2,
                           ),
-                        );
-                      }).toList(),
+                        ),
+                        child: Text(
+                          course,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.lightGreen,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: 32),
 
-                // Categories Section
+                // Publishers Section
                 const Text(
-                  'Select Category',
+                  'Select Publisher',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -483,12 +576,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 16),
                 Column(
-                  children: _categories.map((category) {
-                    final isSelected = tempCategory == category;
+                  children: _publishers.map((publisher) {
+                    final isSelected = tempPublisher == publisher;
                     return GestureDetector(
                       onTap: () {
                         setModalState(() {
-                          tempCategory = isSelected ? null : category;
+                          tempPublisher = isSelected ? null : publisher;
                         });
                       },
                       child: Container(
@@ -500,11 +593,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: const Color(0xFFe85021),
+                            color: AppColors.lightGreen,
                             width: 2,
                           ),
                           color: isSelected
-                              ? const Color(0xFFe85021).withOpacity(0.1)
+                              ? AppColors.lightGreen.withOpacity(0.1)
                               : Colors.white,
                         ),
                         child: Row(
@@ -515,7 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: const Color(0xFFe85021),
+                                  color: AppColors.lightGreen,
                                   width: 2,
                                 ),
                               ),
@@ -526,7 +619,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         height: 10,
                                         decoration: const BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: Color(0xFFe85021),
+                                          color: AppColors.lightGreen,
                                         ),
                                       ),
                                     )
@@ -534,7 +627,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(width: 16),
                             Text(
-                              category,
+                              publisher,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -555,13 +648,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       setState(() {
-                        _selectedGrade = tempGrade;
-                        _selectedCategory = tempCategory;
+                        _selectedCourse = tempCourse;
+                        _selectedPublisher = tempPublisher;
                       });
                       Navigator.pop(context);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF35a3d9),
+                      backgroundColor: AppColors.lightGreen,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25),
@@ -585,8 +678,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: GestureDetector(
                     onTap: () {
                       setModalState(() {
-                        tempGrade = null;
-                        tempCategory = null;
+                        tempCourse = null;
+                        tempPublisher = null;
                       });
                     },
                     child: Row(
@@ -597,14 +690,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF36a4da),
+                            color: AppColors.lightGreen,
                           ),
                         ),
                         const SizedBox(width: 6),
                         const Icon(
                           Icons.delete_outline,
                           size: 18,
-                          color: Color(0xFF36a4da),
+                          color: AppColors.lightGreen,
                         ),
                       ],
                     ),
@@ -623,38 +716,147 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF0F8FF), // Updated to match dashboard
-      drawer: CategoryNavBar(onItemTap: _handleCategoryTap),
+      backgroundColor: AppColors.surfaceGray,
+      body: Stack(
+        children: [
+          // Background Hidden Drawer Menu
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: AppColors.surfaceGray,
+            child: SafeArea(
+              child: Theme(
+                data: Theme.of(
+                  context,
+                ).copyWith(canvasColor: Colors.transparent),
+                child: CategoryNavBar(
+                  isDrawer: false,
+                  onItemTap: (item) {
+                    _toggleDrawer();
+                    _handleCategoryTap(item);
+                  },
+                ),
+              ),
+            ),
+          ),
+
+          // Foreground Main Content
+          AnimatedBuilder(
+            animation: _drawerController,
+            builder: (context, child) {
+              final double slide = 260.0 * _drawerController.value;
+              final double scale = 1.0 - (_drawerController.value * 0.12);
+              final double radius = _drawerController.value * 32.0;
+
+              return Transform(
+                transform: Matrix4.identity()
+                  ..translate(slide)
+                  ..scale(scale),
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(radius),
+                    boxShadow: [
+                      if (_drawerController.value > 0)
+                        BoxShadow(
+                          color: Colors.blueGrey.withOpacity(0.2),
+                          blurRadius: 24,
+                          spreadRadius: 8,
+                          offset: const Offset(-5, 0),
+                        ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(radius),
+                    child: Stack(
+                      children: [
+                        child ?? const SizedBox.shrink(),
+
+                        // Edge swipe detector to open the drawer
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 24,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onHorizontalDragUpdate: (details) {
+                              _drawerController.value +=
+                                  details.primaryDelta! / 260.0;
+                            },
+                            onHorizontalDragEnd: (details) {
+                              if (details.primaryVelocity! > 300) {
+                                _drawerController.forward();
+                              } else if (details.primaryVelocity! < -300) {
+                                _drawerController.reverse();
+                              } else if (_drawerController.value > 0.5) {
+                                _drawerController.forward();
+                              } else {
+                                _drawerController.reverse();
+                              }
+                            },
+                          ),
+                        ),
+
+                        // Full overlay to capture gestures when drawer is partially/fully open
+                        if (_drawerController.value > 0)
+                          Positioned.fill(
+                            child: GestureDetector(
+                              onTap: _toggleDrawer,
+                              onHorizontalDragUpdate: (details) {
+                                _drawerController.value +=
+                                    details.primaryDelta! / 260.0;
+                              },
+                              onHorizontalDragEnd: (details) {
+                                if (details.primaryVelocity! > 300) {
+                                  _drawerController.forward();
+                                } else if (details.primaryVelocity! < -300) {
+                                  _drawerController.reverse();
+                                } else if (_drawerController.value > 0.5) {
+                                  _drawerController.forward();
+                                } else {
+                                  _drawerController.reverse();
+                                }
+                              },
+                              child: Container(color: Colors.transparent),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+            child: _buildMainScreen(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainScreen() {
+    return Scaffold(
+      backgroundColor: AppColors.surfaceGray,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFFF0F8FF),
+        backgroundColor: AppColors.surfaceGray,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.menu_rounded,
+            color: AppColors.brandGreen,
+            size: 28,
+          ),
+          onPressed: _toggleDrawer,
+        ),
         title: const Text(
           'Elimu Library',
           style: TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF0D47A1), // Gamified header color
+            color: AppColors.brandGreen, // Gamified header color
           ),
         ),
         actions: [
-          // Search icon
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFA726),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.search_rounded,
-                  size: 24,
-                  color: Colors.white,
-                ),
-                onPressed: _showSearchDialog,
-              ),
-            ),
-          ),
           // Library filter icon with circular background
 
           // Settings with circular background
@@ -662,7 +864,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.only(right: 12),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF36a4da),
+                color: AppColors.lightGreen,
                 shape: BoxShape.circle,
               ),
               child: IconButton(
@@ -693,7 +895,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           );
         },
-        backgroundColor: const Color(0xFFe85021),
+        backgroundColor: AppColors.lightGreen,
         icon: const Icon(Icons.explore_rounded, color: Colors.white),
         label: const Text(
           'Learning Areas',
@@ -721,7 +923,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFe85021)),
+              child: CircularProgressIndicator(color: AppColors.lightGreen),
             );
           }
 
@@ -748,12 +950,42 @@ class _HomeScreenState extends State<HomeScreen> {
           final allBooks = snapshot.data?[0] ?? [];
           final cloudBooks = snapshot.data?[1] ?? [];
 
-          // Filter books based on search, grade, and category
-          var filteredBooks = allBooks;
-          var filteredCloudBooks = cloudBooks;
+          var myBooks = allBooks.toList();
+          var discoverBooks = cloudBooks.toList();
+
+          // Move learner's grade cloud books to My Books
+          if (_studentCourses.isNotEmpty) {
+            final learnerCourse = _studentCourses.first;
+            final normalizedLearnerCourse = _normalizeGrade(learnerCourse);
+
+            final learnerCloudBooks = discoverBooks
+                .where(
+                  (e) =>
+                      e.category == learnerCourse ||
+                      e.grade == learnerCourse ||
+                      _normalizeGrade(e.grade) == normalizedLearnerCourse,
+                )
+                .toList();
+
+            for (var book in learnerCloudBooks) {
+              if (!myBooks.any((b) => b.id == book.id)) {
+                myBooks.add(book);
+              }
+            }
+
+            // Remove from discover to avoid showing duplicates
+            discoverBooks.removeWhere(
+              (e) =>
+                  e.category == learnerCourse ||
+                  e.grade == learnerCourse ||
+                  _normalizeGrade(e.grade) == normalizedLearnerCourse,
+            );
+          }
+
+          // Apply active UI filters
 
           if (_searchQuery.isNotEmpty) {
-            filteredBooks = filteredBooks
+            myBooks = myBooks
                 .where(
                   (e) =>
                       e.title.toLowerCase().contains(
@@ -764,7 +996,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                 )
                 .toList();
-            filteredCloudBooks = filteredCloudBooks
+            discoverBooks = discoverBooks
                 .where(
                   (e) =>
                       e.title.toLowerCase().contains(
@@ -776,21 +1008,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
                 .toList();
           }
-          if (_selectedGrade != null) {
-            final selected = _normalizeGrade(_selectedGrade!);
-            filteredBooks = filteredBooks
-                .where((e) => _normalizeGrade(e.grade) == selected)
+
+          if (_selectedCourse != null) {
+            final selected = _selectedCourse!;
+            final normalizedSelected = _normalizeGrade(selected);
+            myBooks = myBooks
+                .where(
+                  (e) =>
+                      e.category == selected ||
+                      e.grade == selected ||
+                      _normalizeGrade(e.grade) == normalizedSelected,
+                )
                 .toList();
-            filteredCloudBooks = filteredCloudBooks
-                .where((e) => _normalizeGrade(e.grade) == selected)
+            discoverBooks = discoverBooks
+                .where(
+                  (e) =>
+                      e.category == selected ||
+                      e.grade == selected ||
+                      _normalizeGrade(e.grade) == normalizedSelected,
+                )
                 .toList();
           }
-          if (_selectedCategory != null) {
-            filteredBooks = filteredBooks
-                .where((e) => e.category == _selectedCategory)
+
+          if (_selectedPublisher != null) {
+            myBooks = myBooks
+                .where((e) => e.author == _selectedPublisher)
                 .toList();
-            filteredCloudBooks = filteredCloudBooks
-                .where((e) => e.category == _selectedCategory)
+            discoverBooks = discoverBooks
+                .where((e) => e.author == _selectedPublisher)
                 .toList();
           }
 
@@ -799,31 +1044,90 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Category Filter Chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+                // Search Bar and Publisher Filter
+                Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 12,
                   ),
                   child: Row(
                     children: [
-                      _buildCategoryChip(
-                        'All Categories',
-                        _selectedCategory == null,
-                        () {
-                          setState(() => _selectedCategory = null);
-                        },
-                      ),
-                      ..._categories.map((category) {
-                        return _buildCategoryChip(
-                          category,
-                          _selectedCategory == category,
-                          () {
-                            setState(() => _selectedCategory = category);
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
                           },
-                        );
-                      }),
+                          decoration: InputDecoration(
+                            hintText: 'Search books...',
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: AppColors.lightGreen,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 0,
+                              horizontal: 16,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(25),
+                              borderSide: BorderSide(
+                                color: AppColors.darkGray.withOpacity(0.5),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(25),
+                              borderSide: BorderSide(
+                                color: AppColors.darkGray.withOpacity(0.5),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(25),
+                              borderSide: const BorderSide(
+                                color: AppColors.lightGreen,
+                                width: 2,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(25),
+                          border: Border.all(
+                            color: AppColors.darkGray.withOpacity(0.5),
+                          ),
+                        ),
+                        child: PopupMenuButton<String>(
+                          tooltip: 'Filter by Publisher',
+                          icon: const Icon(
+                            Icons.filter_list,
+                            color: AppColors.lightGreen,
+                          ),
+                          onSelected: (String? value) {
+                            setState(() {
+                              _selectedPublisher = value;
+                            });
+                          },
+                          itemBuilder: (BuildContext context) => [
+                            const PopupMenuItem<String>(
+                              value: null,
+                              child: Text('All Publishers'),
+                            ),
+                            ..._publishers.map(
+                              (publisher) => PopupMenuItem<String>(
+                                value: publisher,
+                                child: Text(publisher),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -846,11 +1150,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     indicatorSize: TabBarIndicatorSize.tab,
                     dividerColor: Colors.transparent,
                     indicator: BoxDecoration(
-                      color: const Color(0xFFe85021),
+                      color: AppColors.lightGreen,
                       borderRadius: BorderRadius.circular(25),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFe85021).withOpacity(0.3),
+                          color: AppColors.lightGreen.withOpacity(0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -871,8 +1175,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: TabBarView(
                     children: [
-                      _buildBookGrid(filteredBooks, isDownloaded: true),
-                      _buildBookGrid(filteredCloudBooks, isDownloaded: false),
+                      _buildBookGrid(myBooks),
+                      _buildBookGrid(discoverBooks),
                     ],
                   ),
                 ),
@@ -884,30 +1188,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCategoryChip(String label, bool isSelected, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8.0),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (_) => onTap(),
-        selectedColor: const Color(0xFF36a4da),
-        labelStyle: TextStyle(
-          color: isSelected ? Colors.white : Colors.black87,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: isSelected ? const Color(0xFF36a4da) : Colors.grey.shade300,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBookGrid(List<Ebook> books, {required bool isDownloaded}) {
+  Widget _buildBookGrid(List<Ebook> books) {
     if (books.isEmpty) {
       return Center(
         child: Column(
@@ -933,16 +1214,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ), // Padding at bottom for FAB
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: isDownloaded
-            ? 0.65
-            : 0.52, // adjust for download button
+        childAspectRatio: 0.52, // adjust for download and read buttons
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
       itemCount: books.length,
       itemBuilder: (context, index) {
         final book = books[index];
-        return _buildBookCard(book, isDownloaded: isDownloaded)
+        return _buildBookCard(book)
             .animate()
             .fadeIn(duration: 400.ms, delay: (50 * index).ms)
             .slideY(begin: 0.1, duration: 400.ms, curve: Curves.easeOut);
@@ -950,9 +1229,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBookCard(Ebook book, {required bool isDownloaded}) {
+  Widget _buildBookCard(Ebook book) {
     final isDownloading = _downloadProgress.containsKey(book.id);
     final progressNotifier = _downloadProgress[book.id];
+    final isDownloaded = book.isDownloaded;
 
     return GestureDetector(
       onTap: isDownloaded
@@ -1019,8 +1299,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: [
-                                  const Color(0xFF36a4da).withOpacity(0.3),
-                                  const Color(0xFFe85021).withOpacity(0.3),
+                                  AppColors.lightGreen.withOpacity(0.3),
+                                  AppColors.lightGreen.withOpacity(0.3),
                                 ],
                               ),
                             ),
@@ -1040,8 +1320,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              const Color(0xFF36a4da).withOpacity(0.3),
-                              const Color(0xFFe85021).withOpacity(0.3),
+                              AppColors.lightGreen.withOpacity(0.3),
+                              AppColors.lightGreen.withOpacity(0.3),
                             ],
                           ),
                         ),
@@ -1083,58 +1363,74 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: const TextStyle(fontSize: 12, color: Colors.black54),
                   ),
 
-                  // Download button for cloud books
-                  if (!isDownloaded) ...[
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: isDownloading && progressNotifier != null
-                          ? ListenableBuilder(
-                              listenable: progressNotifier,
-                              builder: (context, child) {
-                                final progress = progressNotifier.value;
-                                return Column(
-                                  children: [
-                                    LinearProgressIndicator(
-                                      value: progress,
-                                      backgroundColor: Colors.grey[300],
-                                      valueColor:
-                                          const AlwaysStoppedAnimation<Color>(
-                                            Color(0xFF35a3d9),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: !isDownloaded
+                        ? (isDownloading && progressNotifier != null
+                              ? ListenableBuilder(
+                                  listenable: progressNotifier,
+                                  builder: (context, child) {
+                                    final progress = progressNotifier.value;
+                                    return Column(
+                                      children: [
+                                        LinearProgressIndicator(
+                                          value: progress,
+                                          backgroundColor: Colors.grey[300],
+                                          valueColor:
+                                              const AlwaysStoppedAnimation<
+                                                Color
+                                              >(AppColors.lightGreen),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${(progress * 100).toStringAsFixed(0)}%',
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.black54,
                                           ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                )
+                              : ElevatedButton.icon(
+                                  onPressed: () => _downloadBook(book),
+                                  icon: const Icon(Icons.download, size: 16),
+                                  label: const Text('Download'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.lightGreen,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
                                     ),
-                                    // SUGGESTION: Replace LinearProgressIndicator with a Lottie animation
-                                    // for a more engaging progress display, like a rocket filling up.
-                                    // e.g., Lottie.asset('assets/animations/progress.json', controller: _animationController)
-                                    // You would need to manage an AnimationController based on the download progress.
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${(progress * 100).toStringAsFixed(0)}%',
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            )
-                          : ElevatedButton.icon(
-                              onPressed: () => _downloadBook(book),
-                              icon: const Icon(Icons.download, size: 16),
-                              label: const Text('Download'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF35a3d9),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
+                                    textStyle: const TextStyle(fontSize: 12),
+                                  ),
+                                ))
+                        : ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      ReaderScreen(ebook: book),
                                 ),
-                                textStyle: const TextStyle(fontSize: 12),
+                              );
+                            },
+                            icon: const Icon(Icons.menu_book, size: 16),
+                            label: const Text('Read'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.lightGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
                               ),
+                              textStyle: const TextStyle(fontSize: 12),
                             ),
-                    ),
-                  ],
+                          ),
+                  ),
                 ],
               ),
             ),
