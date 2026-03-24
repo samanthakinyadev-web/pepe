@@ -186,7 +186,7 @@ class _MainViewState extends State<MainView> {
                       hintText: "Search your library",
                       hintStyle: TextStyle(color: Colors.white70),
                       border: InputBorder.none,
-                      icon: Icon(Icons.search, color: Colors.white),
+                      icon: Icon(Icons.search, color: AppColors.white),
                     ),
                   ),
                 ),
@@ -206,7 +206,7 @@ class _MainViewState extends State<MainView> {
                   ),
                   child: const Icon(
                     Icons.auto_stories,
-                    color: Colors.white,
+                    color: AppColors.white,
                     size: 24,
                   ),
                 ),
@@ -219,8 +219,8 @@ class _MainViewState extends State<MainView> {
             child: ElevatedButton(
               onPressed: () => widget.onNavigate(1), // Navigate to Library Tab
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppColors.brandGreen,
+                backgroundColor: Colors.orangeAccent,
+                foregroundColor: AppColors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -346,7 +346,7 @@ class _MainViewState extends State<MainView> {
             child: CustomPaint(
               painter: RingProgressPainter(
                 progress: 0.75,
-                color: AppColors.brandGreen,
+                color: AppColors.accentOrange,
               ),
               child: const Center(
                 child: Text(
@@ -529,7 +529,7 @@ class _MainViewState extends State<MainView> {
                 itemMap['course_name'] ??
                 itemMap['name'] ??
                 'Unknown Course';
-            final subtitle = itemMap['assigned_instructor'] ?? 'In Progress';
+            final subtitle = itemMap['subtitle'] ?? 'In Progress';
             return _buildActivityCard(
               title,
               subtitle.toString(),

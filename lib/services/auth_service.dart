@@ -25,6 +25,8 @@ class AuthService {
   static const String _passportTokenKey = 'passport_token';
   static const String _emailKey = 'auth_email';
   static const String _userIdKey = 'auth_user_id';
+  static const String _roleIdKey = 'auth_role_id';
+  static const String _roleNameKey = 'auth_role_name';
   static const Set<int> _allowedRoleIds = {2, 3, 7};
   static const Set<String> _allowedRoleNames = {
     'student',
@@ -117,6 +119,12 @@ class AuthService {
         key: _userIdKey,
         value: user['id']?.toString() ?? '',
       );
+      if (roleId != null) {
+        await _secureStorage.write(key: _roleIdKey, value: roleId.toString());
+      }
+      if (roleName != null && roleName.isNotEmpty) {
+        await _secureStorage.write(key: _roleNameKey, value: roleName);
+      }
 
       return LoginResult(
         success: true,
@@ -163,6 +171,8 @@ class AuthService {
     await _secureStorage.delete(key: _passportTokenKey);
     await _secureStorage.delete(key: _emailKey);
     await _secureStorage.delete(key: _userIdKey);
+    await _secureStorage.delete(key: _roleIdKey);
+    await _secureStorage.delete(key: _roleNameKey);
   }
 
   Future<String?> getToken() async {
@@ -172,6 +182,18 @@ class AuthService {
   Future<bool> isLoggedIn() async {
     final token = await getToken();
     return token != null && token.isNotEmpty;
+  }
+
+  Future<int?> getSavedRoleId() async {
+    final raw = await _secureStorage.read(key: _roleIdKey);
+    if (raw == null || raw.isEmpty) return null;
+    return int.tryParse(raw);
+  }
+
+  Future<String?> getSavedRoleName() async {
+    final raw = await _secureStorage.read(key: _roleNameKey);
+    if (raw == null || raw.isEmpty) return null;
+    return raw;
   }
 
   Future<bool> validateSession() async {

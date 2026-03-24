@@ -3,7 +3,6 @@ import '../models/ebook.dart';
 import 'package:dio/dio.dart';
 import '../models/menu_item.dart';
 import 'package:flutter/material.dart';
-import 'package:loho_ebook_reader/theme/app_theme.dart';
 import '../screens/reader_screen.dart';
 import '../screens/settings_screen.dart';
 import '../services/storage_service.dart';
@@ -15,6 +14,7 @@ import '../screens/webview_content_screen.dart';
 import '../services/cloud_sync_service_php.dart';
 import '../screens/components/category_nav_bar.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:loho_ebook_reader/theme/app_theme.dart';
 import '../services/learner_dashboard_api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:loho_ebook_reader/screens/dashboard_screen.dart';
@@ -140,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: Colors.white,
         title: const Text(
-          '🌟 Daily Reward! h🌟',
+          '🌟 Daily Reward! 🌟',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: AppColors.lightGreen,
@@ -150,13 +150,17 @@ class _HomeScreenState extends State<HomeScreen>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.star_rounded, color: Colors.amber, size: 80)
+            const Icon(
+                  Icons.star_rounded,
+                  color: AppColors.accentYellow,
+                  size: 80,
+                )
                 .animate(onPlay: (controller) => controller.repeat())
                 .shimmer(duration: 1200.ms, color: Colors.white)
                 .shake(hz: 4, curve: Curves.easeInOut),
             const SizedBox(height: 16),
             const Text(
-              'Welcome back! You earn Elimu quest Pointstoday!',
+              'Welcome back! to Elimu Pepe !',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.black87),
             ),
@@ -895,7 +899,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           );
         },
-        backgroundColor: AppColors.lightGreen,
+        backgroundColor: AppColors.brandGreen,
         icon: const Icon(Icons.explore_rounded, color: Colors.white),
         label: const Text(
           'Learning Areas',

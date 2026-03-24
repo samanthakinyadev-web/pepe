@@ -24,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   static const Color _primaryGreen = AppColors.brandGreen;
   static const Color _accentOrange = AppColors.accentOrange;
-  static const Color _softBackground = AppColors.surfaceGray;
+  static const Color _softBackground = AppColors.brandGreen;
   static const Color _cardBorder = AppColors.darkGray;
   static const Color _textDark = AppColors.textMain;
   static const Color _textMuted = AppColors.textMuted;
@@ -130,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   // TODO: Update these colors to match fam1.png if needed
-                  colors: [AppColors.surfaceGray, Color(0xFFE8F6F3)],
+                  colors: [AppColors.brandGreen, AppColors.lightGreen],
                 ),
               ),
             ),
@@ -185,9 +185,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 20),
                           const Text(
-                            'Welcome back',
+                            'SMART LEARNING',
                             style: TextStyle(
-                              color: _textDark,
+                              color: Colors.white,
                               fontSize: 30,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.3,
@@ -195,10 +195,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 6),
-                          const Text(
-                            'Sign in to continue reading with Elimu Pepe',
+                          Text(
+                            'for a Smarter Generation',
                             style: TextStyle(
-                              color: _textMuted,
+                              color: Colors.white.withOpacity(0.9),
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
@@ -208,9 +208,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Colors.white.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: _cardBorder),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.3),
+                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.05),
@@ -304,17 +306,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: const Text(
                               'Forgot password?',
                               style: TextStyle(
-                                color: _primaryGreen,
+                                color: Colors.white,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
+                          Text(
                             'No account yet? Contact admin for access',
                             style: TextStyle(
-                              color: _textMuted,
+                              color: Colors.white.withOpacity(0.9),
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                             ),
@@ -344,12 +346,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                 }
                               }
                             },
-                            child: const Text(
+                            child: Text(
                               'Privacy Policy',
                               style: TextStyle(
-                                color: _textMuted,
+                                color: Colors.white.withOpacity(0.9),
                                 fontSize: 13,
                                 decoration: TextDecoration.underline,
+                                decorationColor: Colors.white.withOpacity(0.9),
                               ),
                             ),
                           ),
@@ -382,9 +385,25 @@ class _LoginScreenState extends State<LoginScreen> {
           ClipPath(
             clipper: _WavyHeaderClipper(),
             child: Container(
+              width: double.infinity,
+              height: double.infinity,
               decoration: const BoxDecoration(
                 // TODO: Update this hex color to exactly match the background color of fam1.png
                 color: Color(0xFFE8F6F3),
+              ),
+              child: Image.asset(
+                'assets/images/fam.png',
+                fit: heroFit,
+                alignment: isTablet ? Alignment.center : Alignment.bottomCenter,
+                errorBuilder: (context, error, stackTrace) {
+                  return Image.asset(
+                    'assets/images/kid_reading.png',
+                    fit: heroFit,
+                    alignment: isTablet
+                        ? Alignment.center
+                        : Alignment.bottomCenter,
+                  );
+                },
               ),
             ),
           ),
@@ -412,35 +431,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: SizedBox(
-                  height: imageHeight,
-                  width: double.infinity,
-                  child: Image.asset(
-                    'assets/images/fam1.png',
-                    fit: heroFit,
-                    alignment: isTablet
-                        ? Alignment.center
-                        : Alignment.topCenter,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Image.asset(
-                        'assets/images/kid_reading.png',
-                        fit: heroFit,
-                        alignment: isTablet
-                            ? Alignment.center
-                            : Alignment.topCenter,
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -455,66 +445,83 @@ class _LoginScreenState extends State<LoginScreen> {
     TextInputType keyboardType = TextInputType.text,
     bool isPassword = false,
   }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: isPassword ? _obscurePassword : false,
-      validator: validator,
-      style: const TextStyle(
-        color: _textDark,
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-      ),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon, color: _textMuted),
-        suffixIcon: isPassword
-            ? IconButton(
-                onPressed: () {
-                  setState(() {
-                    _obscurePassword = !_obscurePassword;
-                  });
-                },
-                icon: Icon(
-                  _obscurePassword
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  color: _textMuted,
-                ),
-              )
-            : null,
-        filled: true,
-        fillColor: const Color(0xFFF7FAF7),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _cardBorder),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          obscureText: isPassword ? _obscurePassword : false,
+          validator: validator,
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: Colors.grey.shade500,
+              fontWeight: FontWeight.w500,
+            ),
+            prefixIcon: Icon(icon, color: Colors.grey.shade600, size: 22),
+            suffixIcon: isPassword
+                ? IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      color: Colors.grey.shade600,
+                      size: 22,
+                    ),
+                  )
+                : null,
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 18,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(
+                color: AppColors.lightGreen,
+                width: 2,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+            ),
+          ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _cardBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _primaryGreen, width: 1.8),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _accentOrange, width: 1.2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _accentOrange, width: 1.6),
-        ),
-        labelStyle: const TextStyle(
-          color: _textMuted,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      ],
     );
   }
 }

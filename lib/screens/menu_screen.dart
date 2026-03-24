@@ -24,7 +24,7 @@ class MenuScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.accentYellow,
+                  color: AppColors.brandGreen,
                   letterSpacing: -0.5,
                 ),
               ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2),
@@ -124,16 +124,10 @@ class _MenuTile extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isDisabled
-                        ? Colors.grey.shade100
-                        : itemColor.withOpacity(0.12),
+                    color: isDisabled ? Colors.blueGrey.shade200 : itemColor,
                     shape: BoxShape.circle,
                   ),
-                  child: FaIcon(
-                    item.icon,
-                    size: 28,
-                    color: isDisabled ? Colors.blueGrey.shade300 : itemColor,
-                  ),
+                  child: FaIcon(item.icon, size: 28, color: Colors.white),
                 ),
                 const SizedBox(height: 10),
                 Text(

@@ -21,7 +21,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   String _userName = 'Loading...';
   String _lohoId = 'LOHO-...';
-  String _grade = 'Grade 4';
+  String _grade = 'Grade ...';
   String _profileImageUrl = '';
 
   @override
@@ -36,7 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _userName = prefs.getString('user_name') ?? 'Alex Learner';
       _lohoId = prefs.getString('loho_id') ?? 'LOHO-12345';
-      _grade = prefs.getString('grade') ?? 'Grade 4';
+      _grade = prefs.getString('grade') ?? 'Grade ...';
       _profileImageUrl = prefs.getString('profile_image_url') ?? '';
     });
 
@@ -56,11 +56,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _lohoId;
 
         // Fetch grade and format it if necessary
-        final fetchedGrade = userData['grade'] ?? userData['grade_level'];
-        if (fetchedGrade != null) {
-          _grade = fetchedGrade.toString().toLowerCase().startsWith('grade')
-              ? fetchedGrade.toString()
-              : 'Grade $fetchedGrade';
+        final fetchedGrade = _extractGrade(userData);
+        if (fetchedGrade != null && fetchedGrade.isNotEmpty) {
+          _grade = fetchedGrade;
         }
 
         // Fetch profile image URL
@@ -77,6 +75,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await prefs.setString('grade', _grade);
       await prefs.setString('profile_image_url', _profileImageUrl);
     }
+  }
+
+  String? _extractGrade(Map<String, dynamic> userData) {
+    final direct = _readGradeField(userData);
+    if (direct != null) return direct;
+
+    final possibleNestedKeys = [
+      'student',
+      'learner',
+      'profile',
+      'child',
+      'user',
+      'data',
+    ];
+
+    for (final key in possibleNestedKeys) {
+      final nested = userData[key];
+      if (nested is Map<String, dynamic>) {
+        final nestedGrade = _readGradeField(nested);
+        if (nestedGrade != null) return nestedGrade;
+      }
+    }
+
+    return null;
+  }
+
+  String? _readGradeField(Map<String, dynamic> data) {
+    final raw =
+        data['grade'] ??
+        data['grade_level'] ??
+        data['gradeLevel'] ??
+        data['class'] ??
+        data['class_name'] ??
+        data['level'] ??
+        data['course'] ??
+        data['current_grade'] ??
+        data['current_grade_level'];
+
+    if (raw == null) return null;
+    final text = raw.toString().trim();
+    if (text.isEmpty) return null;
+
+    return text.toLowerCase().startsWith('grade') ? text : 'Grade $text';
   }
 
   Future<void> _confirmLogout(BuildContext context) async {
@@ -266,7 +307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: const Icon(
                       Icons.workspace_premium_rounded,
-                      color: Colors.amber,
+                      color: AppColors.accentYellow,
                       size: 32,
                     ),
                   ),
@@ -332,7 +373,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   '2450',
                   'Points',
                   Icons.star_rounded,
-                  Colors.amber,
+                  AppColors.accentYellow,
                 ),
                 _buildStatCard(
                   '12',
@@ -384,10 +425,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 _buildBadge(
                   Icons.auto_stories_rounded,
-                  Colors.orange,
+                  AppColors.accentOrange,
                   'Bookworm',
                 ),
-                _buildBadge(Icons.emoji_events_rounded, Colors.amber, 'Top 10'),
+                _buildBadge(
+                  Icons.emoji_events_rounded,
+                  AppColors.accentYellow,
+                  'Top 10',
+                ),
                 _buildBadge(Icons.code_rounded, Colors.purple, 'Coder'),
                 _buildBadge(
                   Icons.lock_outline_rounded,

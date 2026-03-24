@@ -282,7 +282,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
   }
 
   String? _buildLearningAreaSubtitle(Map<String, dynamic> item) {
-    final teacher = _asText(item['assigned_instructor']);
+    final teacher = _asText(item['']);
     final percentage = item['totalCompletePercentage'];
     final progress = percentage is num
         ? '${percentage.toStringAsFixed(0)}% complete'

@@ -31,6 +31,8 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
   final GlobalKey<ScaffoldState> _homeScaffoldKey = GlobalKey<ScaffoldState>();
   late final MenuItem _elimuQuestMenuItem = MenuItem.getDefaultMenuItems()
       .firstWhere((item) => item.id == 'elimu_quest');
+  late final MenuItem _leaderboardMenuItem = MenuItem.getDefaultMenuItems()
+      .firstWhere((item) => item.id == 'leaderboard');
   String _userName = 'Learner';
   String? _userAvatar;
 
@@ -100,8 +102,8 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
             label: 'Quest',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_outlined, size: 28),
-            activeIcon: Icon(Icons.grid_view_rounded, size: 28),
+            icon: Icon(Icons.menu_outlined, size: 28),
+            activeIcon: Icon(Icons.menu_rounded, size: 28),
             label: 'Menu',
           ),
           BottomNavigationBarItem(
@@ -126,6 +128,8 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
             _buildQuestCard(),
             const SizedBox(height: 30),
             _buildSupportSection(),
+            const SizedBox(height: 20),
+            _buildLeaderboardCard(),
           ],
         ).animate().fadeIn(duration: 500.ms),
       ),
@@ -200,7 +204,7 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
             children: [
               Icon(
                 Icons.local_fire_department_rounded,
-                color: Colors.white,
+                color: AppColors.accentYellow,
                 size: 32,
               ),
               SizedBox(width: 12),
@@ -231,8 +235,52 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
           "Need Support?",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        trailing: const Icon(Icons.chat_rounded, color: Colors.green),
+        subtitle: const Text(
+          'Chat with us on WhatsApp for help, feedback, or bug reports.',
+          style: TextStyle(color: Colors.blueGrey),
+        ),
+        trailing: const Icon(Icons.chat_rounded, color: AppColors.accentOrange),
         onTap: _launchWhatsApp,
+      ),
+    );
+  }
+
+  Widget _buildLeaderboardCard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                CategoryItemsScreen(menuItem: _leaderboardMenuItem),
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.orange.shade400, Colors.orange.shade600],
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.emoji_events_rounded, color: Colors.white, size: 28),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Leaderboard: See the Top Learners',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+            ],
+          ),
+        ),
       ),
     );
   }
