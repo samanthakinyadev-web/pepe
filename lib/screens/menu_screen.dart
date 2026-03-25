@@ -4,9 +4,49 @@ import 'package:loho_ebook_reader/theme/app_theme.dart';
 import 'package:loho_ebook_reader/models/menu_item.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:loho_ebook_reader/screens/category_items_screen.dart';
+import 'package:loho_ebook_reader/screens/webview_content_screen.dart';
+import 'package:loho_ebook_reader/services/learner_dashboard_api_service.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
+
+  Future<void> _handleMenuTap(BuildContext context, MenuItem item) async {
+    if (item.isComingSoon) return;
+
+    final directIntendedByMenuId = <String, String>{
+      'interactive_books': '/interactive-books',
+      'esoma_kids': '/esoma',
+      'loho_tv': '/loho-tv',
+      'data_learning': '/dals',
+      'dals_learning': '/dals',
+      'virtual_labs': '/phet',
+      'games': '/elimu',
+      'leaderboard': '/leaderboard/embed',
+    };
+
+    final intendedPath = directIntendedByMenuId[item.id];
+    if (intendedPath != null) {
+      final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
+      final webviewLoginUrl = await LearnerDashboardApiService.instance
+          .fetchWebviewLoginUrl(targetUrl: targetUrl);
+
+      if (!context.mounted) return;
+
+      final finalUrl = webviewLoginUrl ?? targetUrl;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              WebViewContentScreen(title: item.title, url: finalUrl),
+        ),
+      );
+      return;
+    }
+
+    if (!context.mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => CategoryItemsScreen(menuItem: item)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,14 +90,7 @@ class MenuScreen extends StatelessWidget {
                         item: item,
                         onTap: item.isComingSoon
                             ? null
-                            : () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        CategoryItemsScreen(menuItem: item),
-                                  ),
-                                );
-                              },
+                            : () => _handleMenuTap(context, item),
                       )
                       .animate()
                       .fadeIn(delay: (100 * index).ms)

@@ -319,7 +319,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
   }
 
   String? _buildQuizSubtitle(Map<String, dynamic> item) {
-    final teacher = _asText(item['assigned_instructor']);
+    final teacher = _asText(item['']);
     final quizId = item['quiz_id'];
 
     if (teacher != null && quizId != null) {

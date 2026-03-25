@@ -9,6 +9,7 @@ import '../services/storage_service.dart';
 import '../services/php_api_service.dart';
 import '../services/database_service.dart';
 import '../services/thumbnail_service.dart';
+import '../services/user_data_service.dart';
 import '../screens/category_items_screen.dart';
 import '../screens/webview_content_screen.dart';
 import '../services/cloud_sync_service_php.dart';
@@ -44,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen>
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCourse;
+  String? _learnerGrade;
   List<String> _studentCourses = [
     'PP1',
     'PP2',
@@ -83,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen>
       duration: const Duration(milliseconds: 300),
     );
     _syncAndLoadBooks();
+    _loadLearnerGrade();
     _loadStudentCourses();
 
     // Check for daily reward after the first frame renders
@@ -210,6 +213,12 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<void> _refreshLibrary() async {
+    await _loadLearnerGrade();
+    await _loadStudentCourses();
+    await _syncAndLoadBooks();
+  }
+
   void _loadEbooks() {
     setState(() {
       _ebooksFuture = _databaseService.getAllEbooks();
@@ -309,19 +318,33 @@ class _HomeScreenState extends State<HomeScreen>
                   .where((c) => c != 'Unknown')
                   .toList();
 
-              // Automatically filter by the child's current grade from the API
-              if (_selectedCourse == null && _studentCourses.isNotEmpty) {
-                _selectedCourse = _studentCourses.first;
+              if (_learnerGrade != null &&
+                  _learnerGrade!.isNotEmpty &&
+                  !_studentCourses.contains(_learnerGrade)) {
+                _studentCourses.insert(0, _learnerGrade!);
+              }
 
-                // Add bundled offline books to the database specifically for the learner's grade
+              // Automatically filter by the learner's current grade from profile
+              if (_selectedCourse == null) {
+                if (_learnerGrade != null && _learnerGrade!.isNotEmpty) {
+                  _selectedCourse = _learnerGrade;
+                } else if (_studentCourses.isNotEmpty) {
+                  _selectedCourse = _studentCourses.first;
+                }
+              }
+
+              // Add bundled offline books to the database specifically for the learner's grade
+              final targetGrade = _learnerGrade ?? _selectedCourse;
+              if (targetGrade != null && targetGrade.isNotEmpty) {
                 _storageService
                     .copyBundledEbooksToStorage(
                       _databaseService,
-                      targetGrade: _selectedCourse,
+                      targetGrade: targetGrade,
                     )
                     .then((_) {
-                      if (mounted)
+                      if (mounted) {
                         _loadEbooks(); // Refresh the database list in the UI
+                      }
                     });
               }
             });
@@ -340,6 +363,86 @@ class _HomeScreenState extends State<HomeScreen>
     // Keeps the fallback grades if API fails so the UI doesn't break
     // Handled inherently by the initial values, but we can call it to refresh
     // if loading states are added later.
+  }
+
+  Future<void> _loadLearnerGrade() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString('grade');
+    if (cached != null &&
+        cached.isNotEmpty &&
+        cached.toLowerCase() != 'grade ...') {
+      if (mounted) {
+        setState(() {
+          _learnerGrade = cached;
+          _selectedCourse = cached;
+        });
+      } else {
+        _learnerGrade = cached;
+        _selectedCourse = cached;
+      }
+    }
+
+    final apiData = await UserDataService.instance.fetchUserProfile();
+    if (apiData == null) return;
+    final userData = apiData['data'] ?? apiData['user'] ?? apiData;
+    if (userData is! Map<String, dynamic>) return;
+
+    final fetched = _extractGradeFromProfile(userData);
+    if (fetched == null || fetched.isEmpty) return;
+
+    if (mounted) {
+      setState(() {
+        _learnerGrade = fetched;
+        _selectedCourse = fetched;
+      });
+    } else {
+      _learnerGrade = fetched;
+      _selectedCourse = fetched;
+    }
+    await prefs.setString('grade', fetched);
+  }
+
+  String? _extractGradeFromProfile(Map<String, dynamic> userData) {
+    final direct = _readGradeField(userData);
+    if (direct != null) return direct;
+
+    final possibleNestedKeys = [
+      'student',
+      'learner',
+      'profile',
+      'child',
+      'user',
+      'data',
+    ];
+
+    for (final key in possibleNestedKeys) {
+      final nested = userData[key];
+      if (nested is Map<String, dynamic>) {
+        final nestedGrade = _readGradeField(nested);
+        if (nestedGrade != null) return nestedGrade;
+      }
+    }
+
+    return null;
+  }
+
+  String? _readGradeField(Map<String, dynamic> data) {
+    final raw =
+        data['grade'] ??
+        data['grade_level'] ??
+        data['gradeLevel'] ??
+        data['class'] ??
+        data['class_name'] ??
+        data['level'] ??
+        data['course'] ??
+        data['current_grade'] ??
+        data['current_grade_level'];
+
+    if (raw == null) return null;
+    final text = raw.toString().trim();
+    if (text.isEmpty) return null;
+
+    return text.toLowerCase().startsWith('grade') ? text : 'Grade $text';
   }
 
   String _normalizeGrade(String grade) {
@@ -427,13 +530,14 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final directIntendedByMenuId = <String, String>{
+      'interactive_books': '/interactive-books',
       'esoma_kids': '/esoma',
-      'virtual_labs': '/phet',
-      'games': '/elimu',
       'loho_tv': '/loho-tv',
-      'leaderboard': '/leaderboard/embed',
       'data_learning': '/dals',
       'dals_learning': '/dals',
+      'virtual_labs': '/phet',
+      'games': '/elimu',
+      'leaderboard': '/leaderboard/embed',
     };
 
     final intendedPath = directIntendedByMenuId[item.id];
@@ -890,22 +994,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const GamifiedDashboardScreen(),
-            ),
-          );
-        },
-        backgroundColor: AppColors.brandGreen,
-        icon: const Icon(Icons.explore_rounded, color: Colors.white),
-        label: const Text(
-          'Learning Areas',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ).animate().slideY(begin: 1, duration: 800.ms, curve: Curves.easeOutBack),
+      floatingActionButton: null,
       // SUGGESTION: To add a mascot, you could wrap the body in a Stack
       // and place the Rive animation in a corner.
       // body: Stack(
@@ -957,9 +1046,12 @@ class _HomeScreenState extends State<HomeScreen>
           var myBooks = allBooks.toList();
           var discoverBooks = cloudBooks.toList();
 
-          // Move learner's grade cloud books to My Books
-          if (_studentCourses.isNotEmpty) {
-            final learnerCourse = _studentCourses.first;
+          // Move learner's grade cloud books to My Books (keep Discover full)
+          final learnerCourse =
+              _learnerGrade ??
+              _selectedCourse ??
+              (_studentCourses.isNotEmpty ? _studentCourses.first : null);
+          if (learnerCourse != null && learnerCourse.isNotEmpty) {
             final normalizedLearnerCourse = _normalizeGrade(learnerCourse);
 
             final learnerCloudBooks = discoverBooks
@@ -976,68 +1068,39 @@ class _HomeScreenState extends State<HomeScreen>
                 myBooks.add(book);
               }
             }
-
-            // Remove from discover to avoid showing duplicates
-            discoverBooks.removeWhere(
-              (e) =>
-                  e.category == learnerCourse ||
-                  e.grade == learnerCourse ||
-                  _normalizeGrade(e.grade) == normalizedLearnerCourse,
-            );
           }
 
           // Apply active UI filters
 
-          if (_searchQuery.isNotEmpty) {
+          // My Books always constrained to learner grade
+          if (learnerCourse != null && learnerCourse.isNotEmpty) {
+            final normalizedLearnerCourse = _normalizeGrade(learnerCourse);
             myBooks = myBooks
                 .where(
                   (e) =>
-                      e.title.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ) ||
-                      e.author.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ),
-                )
-                .toList();
-            discoverBooks = discoverBooks
-                .where(
-                  (e) =>
-                      e.title.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ) ||
-                      e.author.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ),
+                      e.category == learnerCourse ||
+                      e.grade == learnerCourse ||
+                      _normalizeGrade(e.grade) == normalizedLearnerCourse,
                 )
                 .toList();
           }
 
-          if (_selectedCourse != null) {
-            final selected = _selectedCourse!;
-            final normalizedSelected = _normalizeGrade(selected);
-            myBooks = myBooks
-                .where(
-                  (e) =>
-                      e.category == selected ||
-                      e.grade == selected ||
-                      _normalizeGrade(e.grade) == normalizedSelected,
-                )
-                .toList();
+          // Search & publisher filter only apply to Discover
+          if (_searchQuery.isNotEmpty) {
             discoverBooks = discoverBooks
                 .where(
                   (e) =>
-                      e.category == selected ||
-                      e.grade == selected ||
-                      _normalizeGrade(e.grade) == normalizedSelected,
+                      e.title.toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      ) ||
+                      e.author.toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      ),
                 )
                 .toList();
           }
 
           if (_selectedPublisher != null) {
-            myBooks = myBooks
-                .where((e) => e.author == _selectedPublisher)
-                .toList();
             discoverBooks = discoverBooks
                 .where((e) => e.author == _selectedPublisher)
                 .toList();
@@ -1177,11 +1240,15 @@ class _HomeScreenState extends State<HomeScreen>
 
                 // Tab Views
                 Expanded(
-                  child: TabBarView(
-                    children: [
-                      _buildBookGrid(myBooks),
-                      _buildBookGrid(discoverBooks),
-                    ],
+                  child: RefreshIndicator(
+                    color: AppColors.lightGreen,
+                    onRefresh: _refreshLibrary,
+                    child: TabBarView(
+                      children: [
+                        _buildBookGrid(myBooks),
+                        _buildBookGrid(discoverBooks),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -1194,22 +1261,29 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildBookGrid(List<Ebook> books) {
     if (books.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset('assets/images/app_icon.png', width: 64, height: 64),
-            const SizedBox(height: 16),
-            const Text(
-              'No books available',
-              style: TextStyle(fontSize: 16, color: Colors.black45),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 120),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset('assets/images/app_icon.png', width: 64, height: 64),
+                const SizedBox(height: 16),
+                const Text(
+                  'No books available',
+                  style: TextStyle(fontSize: 16, color: Colors.black45),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(
         16,
         0,

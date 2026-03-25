@@ -6,6 +6,7 @@ import 'package:loho_ebook_reader/services/auth_service.dart';
 import 'package:loho_ebook_reader/services/database_service.dart';
 import 'package:loho_ebook_reader/screens/category_items_screen.dart';
 import 'package:loho_ebook_reader/services/learner_dashboard_api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MainView extends StatefulWidget {
   final Function(int) onNavigate;
@@ -18,6 +19,7 @@ class MainView extends StatefulWidget {
 
 class _MainViewState extends State<MainView> {
   String _userName = "Learner";
+  String _profileImageUrl = '';
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -34,10 +36,22 @@ class _MainViewState extends State<MainView> {
 
   Future<void> _fetchUserProfile() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _profileImageUrl = prefs.getString('profile_image_url') ?? '';
+          _userName = prefs.getString('user_name') ?? _userName;
+        });
+      }
+
       final user = await AuthService.instance.getCurrentUser();
       if (mounted) {
         setState(() {
           _userName = user['name'] ?? "Learner";
+          final avatar = user['avatar']?.toString();
+          if (avatar != null && avatar.isNotEmpty) {
+            _profileImageUrl = avatar;
+          }
         });
       }
     } catch (e) {
@@ -69,11 +83,17 @@ class _MainViewState extends State<MainView> {
             child: GestureDetector(
               onTap: () =>
                   widget.onNavigate(4), // Navigate to Profile Tab (index 4)
-              child: const CircleAvatar(
+              child: CircleAvatar(
                 radius: 16,
-                backgroundImage: NetworkImage(
-                  'https://i.pravatar.cc/150?img=12',
-                ),
+                backgroundImage:
+                    _profileImageUrl.isNotEmpty
+                        ? NetworkImage(_profileImageUrl)
+                        : null,
+                backgroundColor: Colors.white,
+                child:
+                    _profileImageUrl.isEmpty
+                        ? const Icon(Icons.person, size: 18)
+                        : null,
               ),
             ),
           ),
@@ -90,31 +110,35 @@ class _MainViewState extends State<MainView> {
       color: AppColors.surfaceGray,
       child: DefaultTabController(
         length: 3,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          children: [
-            _buildHeaderCard(),
-            const SizedBox(height: 20),
-            _buildSectionHeader("Quick Access"),
-            const SizedBox(height: 12),
-            _buildQuickAccessTabs(menuItems),
-            const SizedBox(height: 20),
-            _buildDailyProgressCard(),
-            const SizedBox(height: 24),
-            _buildSectionHeader(
-              "Overview",
-              onTap: () => _openMenuItem(menuItems),
-            ),
-            const SizedBox(height: 16),
-            _buildStatsGrid(),
-            const SizedBox(height: 24),
-            _buildSectionHeader(
-              "My Learning Areas",
-              onTap: () => _openMenuItem(menuItems),
-            ),
-            const SizedBox(height: 16),
-            _buildRecentActivitiesSection(),
-          ],
+        child: RefreshIndicator(
+          color: AppColors.lightGreen,
+          onRefresh: _fetchUserProfile,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            children: [
+              _buildHeaderCard(),
+              const SizedBox(height: 20),
+              _buildSectionHeader("Quick Access"),
+              const SizedBox(height: 12),
+              _buildQuickAccessTabs(menuItems),
+              const SizedBox(height: 20),
+              _buildDailyProgressCard(),
+              const SizedBox(height: 24),
+              _buildSectionHeader(
+                "Overview",
+                onTap: () => _openMenuItem(menuItems),
+              ),
+              const SizedBox(height: 16),
+              _buildStatsGrid(),
+              const SizedBox(height: 24),
+              _buildSectionHeader(
+                "My Learning Areas",
+                onTap: () => _openMenuItem(menuItems),
+              ),
+              const SizedBox(height: 16),
+              _buildRecentActivitiesSection(),
+            ],
+          ),
         ),
       ),
     );

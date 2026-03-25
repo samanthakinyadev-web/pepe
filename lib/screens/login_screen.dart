@@ -234,10 +234,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     validator: (value) {
                                       final text = value?.trim() ?? '';
                                       if (text.isEmpty) {
-                                        return 'Email is required';
-                                      }
-                                      if (!text.contains('@')) {
-                                        return 'Enter a valid email address';
+                                        return 'Email or Loho ID is required';
                                       }
                                       return null;
                                     },

@@ -26,8 +26,8 @@ class UserDataService {
       final token = await AuthService.instance.getToken();
       if (token == null || token.isEmpty) return null;
 
-      final response = await _dio.get(
-        '/v1/auth/me',
+      final response = await _dio.post(
+        '/student/profile',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
@@ -68,11 +68,19 @@ class UserDataService {
 
   /// Example implementation for updating user settings/profile
   Future<bool> updateProfile(Map<String, dynamic> updateData) async {
-    // TODO: Update the endpoint below if your API uses a different path for updates
-    // final token = await AuthService.instance.getToken();
-    // final response = await _dio.post('/v1/auth/update', data: updateData, options: Options(headers: {'Authorization': 'Bearer $token'}));
-    // return response.statusCode == 200;
-    return true;
+    try {
+      final token = await AuthService.instance.getToken();
+      if (token == null || token.isEmpty) return false;
+
+      final response = await _dio.post(
+        '/student/profile/update',
+        data: updateData,
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.statusCode == 200 && response.data['success'] == true;
+    } catch (e) {
+      return false;
+    }
   }
 
   /// Fetches the user's notifications
@@ -81,8 +89,71 @@ class UserDataService {
       final token = await AuthService.instance.getToken();
       if (token == null || token.isEmpty) return null;
 
-      final response = await _dio.get(
+      final response = await _dio.post(
         '/student/notifications',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        if (response.data is Map && response.data.containsKey('data')) {
+          return response.data['data'] as List<dynamic>;
+        } else if (response.data is List) {
+          return response.data as List<dynamic>;
+        }
+        return [response.data];
+      }
+    } catch (e) {
+      // Log error
+      return null;
+    }
+    return null;
+  }
+
+  /// Marks all unread notifications as read
+  Future<bool> markNotificationsAsRead() async {
+    try {
+      final token = await AuthService.instance.getToken();
+      if (token == null || token.isEmpty) return false;
+
+      final response = await _dio.post(
+        '/student/notifications/mark-read',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      return response.statusCode == 200 && response.data['success'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Verifies if the student currently has an active subscription
+  Future<bool> checkSubscriptionStatus() async {
+    try {
+      final token = await AuthService.instance.getToken();
+      if (token == null || token.isEmpty) return false;
+
+      final response = await _dio.post(
+        '/student/subscription/check',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data['subscribed'] == true;
+      }
+    } catch (e) {
+      return false;
+    }
+    return false;
+  }
+
+  /// Retrieves the student's quiz results and academic grades
+  Future<List<dynamic>?> fetchGrades() async {
+    try {
+      final token = await AuthService.instance.getToken();
+      if (token == null || token.isEmpty) return null;
+
+      final response = await _dio.post(
+        '/student/grades',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 

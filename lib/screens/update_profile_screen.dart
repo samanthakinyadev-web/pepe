@@ -40,6 +40,24 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    _loadCachedProfile();
+  }
+
+  Future<void> _loadCachedProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _selectedAvatar =
+          prefs.getString('profile_image_url') ?? _selectedAvatar;
+      _nameController.text = prefs.getString('user_name') ?? _nameController.text;
+      _emailController.text =
+          prefs.getString('user_email') ?? _emailController.text;
+    });
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
@@ -53,8 +71,9 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       // Save the selected avatar URL to SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('profile_image_url', _selectedAvatar);
+      await prefs.setString('user_name', _nameController.text.trim());
+      await prefs.setString('user_email', _emailController.text.trim());
 
-      // TODO: Implement actual save logic to backend/local storage
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profile updated successfully!'),
@@ -62,9 +81,11 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         ),
       );
       Navigator.pop(context);
-      //Update the value to API
+      // Update the value to API
       UserDataService.instance.updateProfile({
-        "profile_image_url": _selectedAvatar,
+        'avatar': _selectedAvatar,
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
       });
     }
   }
