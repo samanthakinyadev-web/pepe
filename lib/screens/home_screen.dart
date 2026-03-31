@@ -17,8 +17,8 @@ import '../screens/components/category_nav_bar.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:loho_ebook_reader/theme/app_theme.dart';
 import '../services/learner_dashboard_api_service.dart';
+import 'package:loho_ebook_reader/utils/image_url_resolver.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:loho_ebook_reader/screens/dashboard_screen.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -264,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen>
                     json['course']?.toString() ??
                     '',
                 category: json['category'] ?? 'Textbooks',
-                coverImagePath: json['cover_url'] ?? json['thumbnail_url'],
+                coverImagePath: ImageUrlResolver.fromMap(json),
                 totalPages: json['pages'] ?? json['total_pages'] ?? 0,
                 isDownloaded: false,
               );
@@ -1269,7 +1269,11 @@ class _HomeScreenState extends State<HomeScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset('assets/images/app_icon.png', width: 64, height: 64),
+                Image.asset(
+                  'assets/images/app_icon.png',
+                  width: 64,
+                  height: 64,
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'No books available',

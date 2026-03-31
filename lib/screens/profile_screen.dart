@@ -6,9 +6,9 @@ import 'update_profile_screen.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/user_data_service.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:loho_ebook_reader/theme/app_theme.dart';
+import 'package:loho_ebook_reader/utils/image_url_resolver.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -72,9 +72,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
 
         // Fetch profile image URL (Specifically using 'avatar' from API)
-        if (userData['avatar'] != null &&
-            userData['avatar'].toString().isNotEmpty) {
-          _profileImageUrl = userData['avatar'].toString();
+        final avatar = ImageUrlResolver.fromMap(userData);
+        if (avatar != null && avatar.isNotEmpty) {
+          _profileImageUrl = avatar;
         }
 
         // Fetch gamification points if provided in the profile
@@ -88,6 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await prefs.setString('loho_id', _lohoId);
       await prefs.setString('grade', _grade);
       await prefs.setString('profile_image_url', _profileImageUrl);
+      await prefs.setString('user_avatar', _profileImageUrl);
       await prefs.setString('points', _points);
     }
 
@@ -291,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         backgroundImage: NetworkImage(
                           _profileImageUrl.isNotEmpty
                               ? _profileImageUrl
-                              : 'https://i.pravatar.cc/150?img=12',
+                              : 'https://ui-avatars.com/api/?background=random&name=${Uri.encodeComponent(_userName)}',
                         ),
                       ),
                     ),
@@ -436,21 +437,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     'Points',
                     Icons.star_rounded,
                     AppColors.accentYellow,
-                  ),
+                  ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.18),
                   _buildStatCard(
                     _books,
                     'Books',
                     Icons.menu_book_rounded,
                     AppColors.lightGreen,
-                  ),
+                  ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.18),
                   _buildStatCard(
                     _quests,
                     'Quests',
                     Icons.local_fire_department_rounded,
                     AppColors.lightGreen,
-                  ),
+                  ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.18),
                 ],
-              ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
+              ),
 
               const SizedBox(height: 40),
 
@@ -465,7 +466,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: AppColors.brandGreen,
                   ),
                 ),
-              ),
+              ).animate().fadeIn(delay: 650.ms).slideX(begin: -0.08),
               const SizedBox(height: 16),
               GridView.count(
                 shrinkWrap: true,
@@ -476,33 +477,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 childAspectRatio: 0.8,
                 children: [
                   _buildBadge(
-                    Icons.science_rounded,
-                    Colors.green,
-                    'Science Whiz',
-                  ),
+                        Icons.science_rounded,
+                        Colors.green,
+                        'Science Whiz',
+                      )
+                      .animate()
+                      .fadeIn(delay: 700.ms)
+                      .scale(begin: const Offset(0.86, 0.86)),
                   _buildBadge(
-                    Icons.calculate_rounded,
-                    Colors.lightBlue,
-                    'Math Guru',
-                  ),
+                        Icons.calculate_rounded,
+                        Colors.lightBlue,
+                        'Math Guru',
+                      )
+                      .animate()
+                      .fadeIn(delay: 780.ms)
+                      .scale(begin: const Offset(0.86, 0.86)),
                   _buildBadge(
-                    Icons.auto_stories_rounded,
-                    AppColors.accentOrange,
-                    'Bookworm',
-                  ),
+                        Icons.auto_stories_rounded,
+                        AppColors.accentOrange,
+                        'Bookworm',
+                      )
+                      .animate()
+                      .fadeIn(delay: 860.ms)
+                      .scale(begin: const Offset(0.86, 0.86)),
                   _buildBadge(
-                    Icons.emoji_events_rounded,
-                    AppColors.accentYellow,
-                    'Top 10',
-                  ),
-                  _buildBadge(Icons.code_rounded, Colors.purple, 'Coder'),
+                        Icons.emoji_events_rounded,
+                        AppColors.accentYellow,
+                        'Top 10',
+                      )
+                      .animate()
+                      .fadeIn(delay: 940.ms)
+                      .scale(begin: const Offset(0.86, 0.86)),
+                  _buildBadge(Icons.code_rounded, Colors.purple, 'Coder')
+                      .animate()
+                      .fadeIn(delay: 1020.ms)
+                      .scale(begin: const Offset(0.86, 0.86)),
                   _buildBadge(
-                    Icons.lock_outline_rounded,
-                    Colors.grey.shade400,
-                    'Locked',
-                  ),
+                        Icons.lock_outline_rounded,
+                        Colors.grey.shade400,
+                        'Locked',
+                      )
+                      .animate()
+                      .fadeIn(delay: 1100.ms)
+                      .scale(begin: const Offset(0.86, 0.86)),
                 ],
-              ).animate().fadeIn(delay: 500.ms),
+              ),
 
               const SizedBox(height: 40),
 
@@ -517,34 +536,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: AppColors.brandGreen,
                   ),
                 ),
-              ),
+              ).animate().fadeIn(delay: 760.ms).slideX(begin: -0.08),
               const SizedBox(height: 16),
               if (_recentNotifications.isEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
                   child: Text(
                     'No recent messages.',
                     style: TextStyle(color: Colors.blueGrey),
                   ),
-                )
+                ).animate().fadeIn(delay: 820.ms)
               else
                 Column(
-                  children: _recentNotifications.map((notification) {
+                  children: _recentNotifications.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final notification = entry.value;
                     if (notification is! Map) return const SizedBox.shrink();
                     final isUnread = notification['is_read'] == false;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildMessageCard(
-                        notification['title']?.toString() ??
-                            'System Notification',
-                        notification['message']?.toString() ?? '',
-                        notification['time']?.toString() ?? '',
-                        isUnread,
-                        avatarUrl: _profileImageUrl,
-                      ),
+                      child:
+                          _buildMessageCard(
+                                notification['title']?.toString() ??
+                                    'System Notification',
+                                notification['message']?.toString() ?? '',
+                                notification['time']?.toString() ?? '',
+                                isUnread,
+                                avatarUrl: _profileImageUrl,
+                              )
+                              .animate()
+                              .fadeIn(delay: (820 + (index * 120)).ms)
+                              .slideX(begin: 0.08),
                     );
                   }).toList(),
-                ).animate().fadeIn(delay: 700.ms),
+                ),
               const SizedBox(height: 32),
 
               // Logout Button
@@ -571,7 +596,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     elevation: 0,
                   ),
                 ),
-              ).animate().fadeIn(delay: 800.ms),
+              ).animate().fadeIn(delay: 1080.ms).slideY(begin: 0.16),
               const SizedBox(height: 16),
               ListTile(
                 leading: const Icon(
@@ -592,7 +617,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   );
                 },
-              ),
+              ).animate().fadeIn(delay: 1160.ms).slideY(begin: 0.16),
               const SizedBox(height: 20),
             ],
           ),

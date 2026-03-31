@@ -1,13 +1,13 @@
 import 'login_screen.dart';
-import './home_screen.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/app_page_transitions.dart';
 import 'package:flutter/material.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
   @override
-  _WelcomeScreenState createState() => _WelcomeScreenState();
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
@@ -15,38 +15,52 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   int _currentPage = 0;
 
   void _navigateToLogin() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const LoginScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(0.0, 0.1);
-          const end = Offset.zero;
-          const curve = Curves.easeOut;
-
-          var tween = Tween(
-            begin: begin,
-            end: end,
-          ).chain(CurveTween(curve: curve));
-
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: animation.drive(tween),
-              child: child,
-            ),
-          );
-        },
-        transitionDuration: Duration(milliseconds: 500),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(AppPageTransitions.route(const LoginScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.brandGreen,
       body: Stack(
         children: [
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [AppColors.brandGreen, AppColors.lightGreen],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: -120,
+            right: -80,
+            child: Container(
+              height: 220,
+              width: 220,
+              decoration: BoxDecoration(
+                color: AppColors.brandGreen.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -140,
+            left: -60,
+            child: Container(
+              height: 260,
+              width: 260,
+              decoration: BoxDecoration(
+                color: AppColors.brandGreen.withValues(alpha: 0.06),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
           PageView(
             controller: _controller,
             onPageChanged: (int page) => setState(() => _currentPage = page),
@@ -77,7 +91,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               onPressed: _navigateToLogin,
               child: Text(
                 "Skip",
-                style: TextStyle(color: AppColors.lightGreen, fontSize: 16),
+                style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
           ),
@@ -202,7 +216,7 @@ class _WelcomePageState extends State<WelcomePage>
       topWidget = Icon(
         widget.icon ?? Icons.school,
         size: 100,
-        color: AppColors.brandGreen,
+        color: Colors.white,
       );
     }
 
@@ -219,7 +233,11 @@ class _WelcomePageState extends State<WelcomePage>
           _buildAnimatedWidget(
             Text(
               widget.title,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
             const Interval(0.2, 0.8, curve: Curves.easeOut),
           ),
@@ -228,7 +246,7 @@ class _WelcomePageState extends State<WelcomePage>
             Text(
               widget.description,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+              style: const TextStyle(fontSize: 16, color: Colors.white70),
             ),
             const Interval(0.4, 1.0, curve: Curves.easeOut),
           ),

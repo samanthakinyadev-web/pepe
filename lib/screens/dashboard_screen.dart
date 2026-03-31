@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:loho_ebook_reader/theme/app_theme.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:loho_ebook_reader/models/menu_item.dart';
 import 'package:loho_ebook_reader/screens/main_view.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -15,8 +14,9 @@ import 'package:loho_ebook_reader/screens/menu_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:loho_ebook_reader/screens/parental_gate.dart';
 import 'package:loho_ebook_reader/screens/profile_screen.dart';
-import 'package:loho_ebook_reader/services/php_api_service.dart';
 import 'package:loho_ebook_reader/screens/category_items_screen.dart';
+import 'package:loho_ebook_reader/screens/webview_content_screen.dart';
+import 'package:loho_ebook_reader/services/learner_dashboard_api_service.dart';
 
 class GamifiedDashboardScreen extends StatefulWidget {
   const GamifiedDashboardScreen({super.key});
@@ -51,7 +51,9 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       setState(() {
         _selectedIndex = prefs.getInt('last_dashboard_tab_index') ?? 0;
         _userName = prefs.getString('user_name') ?? 'Learner';
-        _userAvatar = prefs.getString('user_avatar');
+        _userAvatar =
+            prefs.getString('profile_image_url') ??
+            prefs.getString('user_avatar');
       });
     }
   }
@@ -249,12 +251,9 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                CategoryItemsScreen(menuItem: _leaderboardMenuItem),
-          ),
+        onTap: () => _openProtectedIntegration(
+          title: _leaderboardMenuItem.title,
+          intendedPath: '/leaderboard/embed',
         ),
         child: Container(
           padding: const EdgeInsets.all(18),
@@ -281,6 +280,26 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _openProtectedIntegration({
+    required String title,
+    required String intendedPath,
+  }) async {
+    final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
+    final webviewLoginUrl = await LearnerDashboardApiService.instance
+        .fetchWebviewLoginUrl(targetUrl: targetUrl);
+
+    if (!mounted) {
+      return;
+    }
+
+    final finalUrl = webviewLoginUrl ?? targetUrl;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WebViewContentScreen(title: title, url: finalUrl),
       ),
     );
   }

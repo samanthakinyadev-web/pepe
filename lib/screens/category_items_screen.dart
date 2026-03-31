@@ -3,6 +3,7 @@ import 'webview_content_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:loho_ebook_reader/theme/app_theme.dart';
 import '../services/learner_dashboard_api_service.dart';
+import 'package:loho_ebook_reader/utils/image_url_resolver.dart';
 
 class CategoryItemsScreen extends StatefulWidget {
   final MenuItem menuItem;
@@ -182,6 +183,9 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
             final item = items[index];
             final title = _extractTitle(item, index, widget.menuItem.id);
             final subtitle = _extractSubtitle(item, widget.menuItem.id);
+            final imageUrl = item is Map<String, dynamic>
+                ? ImageUrlResolver.fromMap(item)
+                : null;
 
             return Card(
               color: Colors.white,
@@ -195,14 +199,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
                   horizontal: 16,
                   vertical: 10,
                 ),
-                leading: CircleAvatar(
-                  backgroundColor: AppColors.lightGreen.withOpacity(0.15),
-                  child: Icon(
-                    widget.menuItem.icon,
-                    size: 20,
-                    color: AppColors.lightGreen,
-                  ),
-                ),
+                leading: _buildItemLeading(imageUrl),
                 title: Text(
                   title,
                   style: const TextStyle(
@@ -231,6 +228,22 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildItemLeading(String? imageUrl) {
+    if (imageUrl != null) {
+      return CircleAvatar(
+        backgroundColor: AppColors.lightGreen.withValues(alpha: 0.08),
+        backgroundImage: NetworkImage(imageUrl),
+        onBackgroundImageError: (exception, stackTrace) {},
+        child: null,
+      );
+    }
+
+    return CircleAvatar(
+      backgroundColor: AppColors.lightGreen.withValues(alpha: 0.15),
+      child: Icon(widget.menuItem.icon, size: 20, color: AppColors.lightGreen),
     );
   }
 
@@ -368,10 +381,13 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
       return;
     }
 
-    final webviewLoginUrl = await LearnerDashboardApiService.instance
-        .fetchWebviewLoginUrl(targetUrl: normalizedUrl);
+    String finalUrl = normalizedUrl;
+    if (_shouldWrapWithWebviewLogin(normalizedUrl)) {
+      final webviewLoginUrl = await LearnerDashboardApiService.instance
+          .fetchWebviewLoginUrl(targetUrl: normalizedUrl);
+      finalUrl = webviewLoginUrl ?? normalizedUrl;
+    }
 
-    final finalUrl = webviewLoginUrl ?? normalizedUrl;
     if (!mounted) return;
 
     await Navigator.of(context).push(
@@ -426,5 +442,25 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
       return url.trim();
     }
     return null;
+  }
+
+  bool _shouldWrapWithWebviewLogin(String normalizedUrl) {
+    if (widget.menuItem.id == 'non_interactive_books') {
+      return false;
+    }
+
+    final uri = Uri.tryParse(normalizedUrl);
+    if (uri == null) {
+      return true;
+    }
+
+    final path = uri.path.toLowerCase();
+    if (path.contains('/api/webview-auth') ||
+        path.contains('/student/webview-token') ||
+        path.endsWith('.pdf')) {
+      return false;
+    }
+
+    return true;
   }
 }

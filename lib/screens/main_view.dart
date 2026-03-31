@@ -5,7 +5,9 @@ import 'package:loho_ebook_reader/models/menu_item.dart';
 import 'package:loho_ebook_reader/services/auth_service.dart';
 import 'package:loho_ebook_reader/services/database_service.dart';
 import 'package:loho_ebook_reader/screens/category_items_screen.dart';
+import 'package:loho_ebook_reader/screens/webview_content_screen.dart';
 import 'package:loho_ebook_reader/services/learner_dashboard_api_service.dart';
+import 'package:loho_ebook_reader/utils/image_url_resolver.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MainView extends StatefulWidget {
@@ -48,7 +50,7 @@ class _MainViewState extends State<MainView> {
       if (mounted) {
         setState(() {
           _userName = user['name'] ?? "Learner";
-          final avatar = user['avatar']?.toString();
+          final avatar = ImageUrlResolver.fromMap(user);
           if (avatar != null && avatar.isNotEmpty) {
             _profileImageUrl = avatar;
           }
@@ -59,8 +61,41 @@ class _MainViewState extends State<MainView> {
     }
   }
 
-  void _onSelectItem(MenuItem item) {
+  Future<void> _onSelectItem(MenuItem item) async {
     if (item.isComingSoon) return;
+
+    final directIntendedByMenuId = <String, String>{
+      'interactive_books': '/interactive-books',
+      'esoma_kids': '/esoma',
+      'loho_tv': '/loho-tv',
+      'data_learning': '/dals',
+      'dals_learning': '/dals',
+      'virtual_labs': '/phet',
+      'games': '/elimu',
+      'leaderboard': '/leaderboard/embed',
+    };
+
+    final intendedPath = directIntendedByMenuId[item.id];
+    if (intendedPath != null) {
+      final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
+      final webviewLoginUrl = await LearnerDashboardApiService.instance
+          .fetchWebviewLoginUrl(targetUrl: targetUrl);
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WebViewContentScreen(
+            title: item.title,
+            url: webviewLoginUrl ?? targetUrl,
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
 
     Navigator.push(
       context,
@@ -85,15 +120,13 @@ class _MainViewState extends State<MainView> {
                   widget.onNavigate(4), // Navigate to Profile Tab (index 4)
               child: CircleAvatar(
                 radius: 16,
-                backgroundImage:
-                    _profileImageUrl.isNotEmpty
-                        ? NetworkImage(_profileImageUrl)
-                        : null,
+                backgroundImage: _profileImageUrl.isNotEmpty
+                    ? NetworkImage(_profileImageUrl)
+                    : null,
                 backgroundColor: Colors.white,
-                child:
-                    _profileImageUrl.isEmpty
-                        ? const Icon(Icons.person, size: 18)
-                        : null,
+                child: _profileImageUrl.isEmpty
+                    ? const Icon(Icons.person, size: 18)
+                    : null,
               ),
             ),
           ),
@@ -262,7 +295,7 @@ class _MainViewState extends State<MainView> {
   }
 
   Widget _buildQuickAccessTabs(List<MenuItem> menuItems) {
-    final quickItems = menuItems.take(3).toList();
+    final quickItems = menuItems;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -310,11 +343,11 @@ class _MainViewState extends State<MainView> {
     return ListView.separated(
       scrollDirection: Axis.horizontal,
       itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 12),
+      separatorBuilder: (context, index) => const SizedBox(width: 12),
       itemBuilder: (context, index) {
         final item = items[index];
         return GestureDetector(
-          onTap: () => _onSelectItem(item),
+          onTap: item.isComingSoon ? null : () => _onSelectItem(item),
           child: Container(
             width: 140,
             padding: const EdgeInsets.all(14),

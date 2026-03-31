@@ -68,6 +68,12 @@ class MenuItem {
         isComingSoon: false,
       ),
       MenuItem(
+        id: 'grade_book',
+        title: 'Grade Book',
+        icon: FontAwesomeIcons.clipboardCheck,
+        isComingSoon: true,
+      ),
+      MenuItem(
         id: 'loho_tv',
         title: 'Loho TV',
         icon: FontAwesomeIcons.tv,

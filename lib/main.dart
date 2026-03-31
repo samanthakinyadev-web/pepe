@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:loho_ebook_reader/theme/app_theme.dart';
 import 'package:loho_ebook_reader/screens/auth_gate.dart';
+import 'package:loho_ebook_reader/theme/app_page_transitions.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,7 @@ class SecureEbookReaderApp extends StatelessWidget {
           primary: AppColors.brandGreen,
           secondary: AppColors.lightGreen,
         ),
+        pageTransitionsTheme: AppPageTransitions.theme,
         scaffoldBackgroundColor: AppColors.surfaceGray,
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.brandGreen,

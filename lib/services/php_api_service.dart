@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../models/ebook.dart';
+import '../utils/image_url_resolver.dart';
 
 class PhpApiService {
   static final PhpApiService instance = PhpApiService._internal();
@@ -30,7 +31,7 @@ class PhpApiService {
                       : DateTime.now()),
             grade: json['grade'] ?? '',
             category: json['category'] ?? 'Textbooks',
-            coverImagePath: json['cover_url'] ?? json['coverUrl'],
+            coverImagePath: ImageUrlResolver.fromMap(json),
             totalPages: 0,
             isDownloaded: false,
           );
@@ -65,7 +66,7 @@ class PhpApiService {
                 : DateTime.now(),
             grade: json['grade'] ?? '',
             category: json['category'] ?? 'Textbooks',
-            coverImagePath: json['cover_url'] ?? json['coverUrl'],
+            coverImagePath: ImageUrlResolver.fromMap(json),
             totalPages: 0,
             isDownloaded: false,
           );
@@ -101,7 +102,7 @@ class PhpApiService {
                 : DateTime.now(),
             grade: json['grade'] ?? '',
             category: json['category'] ?? 'Textbooks',
-            coverImagePath: json['cover_url'] ?? json['coverUrl'],
+            coverImagePath: ImageUrlResolver.fromMap(json),
             totalPages: 0,
             isDownloaded: false,
           );
@@ -136,7 +137,7 @@ class PhpApiService {
                 : DateTime.now(),
             grade: json['grade'] ?? '',
             category: json['category'] ?? 'Textbooks',
-            coverImagePath: json['cover_url'] ?? json['coverUrl'],
+            coverImagePath: ImageUrlResolver.fromMap(json),
             totalPages: 0,
             isDownloaded: false,
           );

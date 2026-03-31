@@ -49,9 +49,9 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _selectedAvatar =
-          prefs.getString('profile_image_url') ?? _selectedAvatar;
-      _nameController.text = prefs.getString('user_name') ?? _nameController.text;
+      _selectedAvatar = prefs.getString('profile_image_url') ?? _selectedAvatar;
+      _nameController.text =
+          prefs.getString('user_name') ?? _nameController.text;
       _emailController.text =
           prefs.getString('user_email') ?? _emailController.text;
     });
@@ -71,6 +71,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       // Save the selected avatar URL to SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('profile_image_url', _selectedAvatar);
+      await prefs.setString('user_avatar', _selectedAvatar);
       await prefs.setString('user_name', _nameController.text.trim());
       await prefs.setString('user_email', _emailController.text.trim());
 
