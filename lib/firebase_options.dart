@@ -64,7 +64,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '835456013103',
     projectId: 'elimupepe-4ce6f',
     storageBucket: 'elimupepe-4ce6f.firebasestorage.app',
-    iosBundleId: 'com.example.secureEbookReader',
+    iosBundleId: 'com.loho.elimupepe',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '835456013103',
     projectId: 'elimupepe-4ce6f',
     storageBucket: 'elimupepe-4ce6f.firebasestorage.app',
-    iosBundleId: 'com.example.secureEbookReader',
+    iosBundleId: 'com.loho.elimupepe',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

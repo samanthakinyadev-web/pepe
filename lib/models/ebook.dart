@@ -11,7 +11,8 @@ class Ebook {
   final int fileSize; // in bytes
   final String? serverUrl;
   final String grade; // e.g., "1", "2", "3", etc.
-  final String category; // e.g., "Textbooks", "Revision Books", "Readers", "Reference Books"
+  final String
+  category; // e.g., "Textbooks", "Revision Books", "Readers", "Reference Books"
   final String? coverImagePath; // Path to custom thumbnail image
 
   Ebook({

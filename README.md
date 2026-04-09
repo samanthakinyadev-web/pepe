@@ -1,4 +1,4 @@
-# LoHo Secure Ebook Reader
+# Elimu Pepe
 
 Flutter Android app for secure learner access to ebooks and learner dashboard resources.
 

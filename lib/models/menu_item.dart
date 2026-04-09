@@ -16,6 +16,40 @@ class MenuItem {
     this.apiEndpoint,
   });
 
+  static String? directIntendedPathFor(String menuId) {
+    switch (menuId) {
+      case 'learning_areas':
+        return '/my-courses';
+      case 'interactive_books':
+        return '/interactive-books';
+      case 'non_interactive_books':
+        return '/my-elibrary';
+      case 'data_learning':
+      case 'dals_learning':
+        return '/dals';
+      case 'esoma_kids':
+        return '/esoma';
+      case 'virtual_labs':
+        return '/phet';
+      case 'elimu_quest':
+        return '/my-quizzes';
+      case 'loho_tv':
+        return '/loho-tv';
+      case 'games':
+        return '/elimu';
+      case 'leaderboard':
+        return '/leaderboard/embed';
+      case 'live_classes':
+        return '/my-classes';
+      case 'grade_book':
+        return '/student/gradebook';
+      case 'my_questions':
+        return '/my-qa';
+      default:
+        return null;
+    }
+  }
+
   // Predefined menu items (will fetch from API later)
   static List<MenuItem> getDefaultMenuItems() {
     return [
@@ -71,7 +105,7 @@ class MenuItem {
         id: 'grade_book',
         title: 'Grade Book',
         icon: FontAwesomeIcons.clipboardCheck,
-        isComingSoon: true,
+        isComingSoon: false,
       ),
       MenuItem(
         id: 'loho_tv',
@@ -83,7 +117,7 @@ class MenuItem {
         id: 'live_classes',
         title: 'Live Classes',
         icon: FontAwesomeIcons.graduationCap,
-        isComingSoon: true,
+        isComingSoon: false,
       ),
       MenuItem(
         id: 'games',

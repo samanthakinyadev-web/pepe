@@ -5,7 +5,7 @@
 ### 1. ✅ Asset Folder Created
 - Created: `android/app/src/main/assets/ebooks/`
 - This is where you'll place PDF files to bundle in the APK
-- Location: `C:\Users\USER\Documents\Apk\secure_ebook_reader\android\app\src\main\assets\ebooks\`
+- Location: `C:\Users\USER\Documents\Apk\elimupepe\android\app\src\main\assets\ebooks\`
 
 ### 2. ✅ pubspec.yaml Updated
 Added assets section:
@@ -43,7 +43,7 @@ assets:
 ## How to Add PDFs to Your APK
 
 ### **Step 1: Place PDF Files**
-Drop PDF files into: `C:\Users\USER\Documents\Apk\secure_ebook_reader\android\app\src\main\assets\ebooks\`
+Drop PDF files into: `C:\Users\USER\Documents\Apk\elimupepe\android\app\src\main\assets\ebooks\`
 
 Example:
 ```
@@ -55,7 +55,7 @@ android/app/src/main/assets/ebooks/
 
 ### **Step 2: Rebuild APK**
 ```bash
-cd C:\Users\USER\Documents\Apk\secure_ebook_reader
+cd C:\Users\USER\Documents\Apk\elimupepe
 C:\flutter\bin\flutter.bat build apk --release
 ```
 
@@ -83,7 +83,7 @@ Output: `build/app/outputs/flutter-apk/app-release.apk`
 ## File Structure
 
 ```
-secure_ebook_reader/
+elimupepe/
 ├── android/app/src/main/assets/ebooks/  ← Place PDFs here
 ├── lib/
 │   ├── main.dart

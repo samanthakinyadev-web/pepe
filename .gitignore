@@ -54,6 +54,9 @@ build_output.txt
 
 # Local configuration
 local.properties
+android/key.properties
+android/**/*.jks
+android/**/*.keystore
 
 # Bundled ebook assets (large files, keep out of git)
 /android/app/src/main/assets/ebooks/

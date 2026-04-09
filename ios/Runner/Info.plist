@@ -5,7 +5,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Secure Ebook Reader</string>
+		<string>Elimu Pepe</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -13,9 +13,8 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
-		<string>secure_ebook_reader</string>
-		<key>CFBundlePackageType</key>
-		<string>APPL</string>
+		<string>elimupepe</string>
+		<key>CFBundlePackageType</key>		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
 		<string>$(FLUTTER_BUILD_NAME)</string>
 		<key>CFBundleSignature</key>
@@ -47,5 +46,10 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
-	</dict>
-</plist>
+		<key>NSCameraUsageDescription</key>
+		<string>Elimu Pepe needs camera access to let you take a photo for your profile picture.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Elimu Pepe needs access to your photo library to let you choose a profile picture.</string>
+		</dict>
+		</plist>
+

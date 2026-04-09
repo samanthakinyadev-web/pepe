@@ -1,16 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:loho_ebook_reader/theme/app_theme.dart';
-import 'package:loho_ebook_reader/screens/auth_gate.dart';
-import 'package:loho_ebook_reader/theme/app_page_transitions.dart';
+import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:elimupepe/firebase_options.dart';
+import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:elimupepe/features/auth/auth_gate.dart';
+import 'package:elimupepe/core/theme/app_page_transitions.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  runApp(const SecureEbookReaderApp());
+  // Initialize Firebase with the generated options
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase initialization failed: $e');
+  }
+
+  // Lock orientation to portrait for a better, more consistent experience for kids
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  runApp(const SecureElimupepeApp());
 }
 
-class SecureEbookReaderApp extends StatelessWidget {
-  const SecureEbookReaderApp({super.key});
+class SecureElimupepeApp extends StatelessWidget {
+  const SecureElimupepeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
