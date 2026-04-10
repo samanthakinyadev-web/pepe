@@ -77,25 +77,44 @@ class ImageUrlResolver {
     final value = raw.toString().trim();
     if (value.isEmpty) return null;
 
+    // 1. Check if it's already a valid absolute URI (already encoded)
     final uri = Uri.tryParse(value);
     if (uri != null && uri.hasScheme) {
+      // If it has spaces, tryParse might still succeed on some platforms but the URI is invalid.
+      // But usually if tryParse succeeds and hasScheme is true, it's mostly okay.
+      // However, to be safe against double-encoding:
+      if (!value.contains(' ')) {
+        return value;
+      }
+    }
+
+    // 2. Check if it's an absolute URL but with spaces (which makes tryParse return null or invalid)
+    if (value.contains('://')) {
+      // It's absolute but has spaces. Encode it.
+      // Uri.encodeFull is safe to call on a full URL as it preserves scheme and host chars.
       return Uri.encodeFull(value);
     }
 
+    // 3. Handle protocol-relative URLs
     if (value.startsWith('//')) {
       return Uri.encodeFull('https:$value');
     }
 
+    // 4. Handle root-relative URLs
     if (value.startsWith('/')) {
       return Uri.encodeFull('$baseUrl$value');
     }
 
+    // 5. Handle www. URLs
     if (value.startsWith('www.')) {
       return Uri.encodeFull('https://$value');
     }
 
+    // 6. Handle relative paths
     if (value.contains('/')) {
-      return Uri.encodeFull('$baseUrl/$value');
+      final cleanBase = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+      final cleanValue = value.startsWith('/') ? value.substring(1) : value;
+      return Uri.encodeFull('$cleanBase/$cleanValue');
     }
 
     return null;

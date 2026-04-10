@@ -1,25 +1,27 @@
 import 'dart:typed_data';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:elimupepe/models/ebook.dart';
 import 'package:elimupepe/models/menu_item.dart';
-import 'package:flutter/material.dart';
-import 'package:elimupepe/core/widgets/elimu_button.dart';
+import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/widgets/elimu_card.dart';
+import 'package:elimupepe/core/widgets/elimu_button.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/features/reader/reader_screen.dart';
-import 'package:elimupepe/features/settings/settings_screen.dart';
 import 'package:elimupepe/core/services/storage_service.dart';
 import 'package:elimupepe/core/services/php_api_service.dart';
+import 'package:elimupepe/core/widgets/category_nav_bar.dart';
+import 'package:elimupepe/core/utils/image_url_resolver.dart';
 import 'package:elimupepe/core/services/database_service.dart';
 import 'package:elimupepe/core/services/thumbnail_service.dart';
 import 'package:elimupepe/core/services/user_data_service.dart';
+import 'package:elimupepe/features/settings/settings_screen.dart';
 import 'package:elimupepe/features/home/category_items_screen.dart';
-import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/core/services/cloud_sync_service_php.dart';
-import 'package:elimupepe/core/widgets/category_nav_bar.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
-import 'package:elimupepe/core/utils/image_url_resolver.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.scaffoldKey});
@@ -45,7 +47,9 @@ class _HomeScreenState extends State<HomeScreen>
   late Future<List<Ebook>> _ebooksFuture;
   late Future<List<Ebook>> _cloudBooksFuture;
   String _searchQuery = '';
+  bool _isSearchActive = false;
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   String? _selectedCourse;
   String? _learnerGrade;
   List<String> _studentCourses = [
@@ -94,7 +98,30 @@ class _HomeScreenState extends State<HomeScreen>
       notifier.dispose();
     }
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  void _resetSearch({bool refreshBooks = false}) {
+    if (_searchController.text.isNotEmpty) {
+      _searchController.clear();
+    }
+
+    if (_searchQuery.isNotEmpty) {
+      setState(() {
+        _searchQuery = '';
+        _isSearchActive = false;
+      });
+    } else {
+      setState(() {
+        _isSearchActive = false;
+      });
+    }
+
+    if (refreshBooks) {
+      _loadEbooks();
+      _loadCloudBooks();
+    }
   }
 
   void _toggleDrawer() {
@@ -210,67 +237,77 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<List<Ebook>> _fetchLearnerTextbooks() async {
     try {
-      List<Ebook> cloudBooks = [];
+      debugPrint('Fetching books from PhpApiService...');
+      final cloudBooksFromPhp = await _apiService.getCloudBooks();
+      debugPrint('PhpApiService returned ${cloudBooksFromPhp.length} books');
 
+      final Map<String, Ebook> cloudBooksMap = {};
+
+      for (final book in cloudBooksFromPhp) {
+        if (book.id.isEmpty) continue;
+        cloudBooksMap[book.id] = book;
+      }
+
+      // Merge learner dashboard books as a fallback source so any extra books
+      // still show up, but keep the PHP API covers and URLs when duplicates
+      // exist for the same book ID.
       debugPrint('Fetching books from LearnerDashboardApiService...');
-      final data = await LearnerDashboardApiService.instance.fetchBooks();
-      debugPrint('fetchBooks returned ${data.length} items');
-      final bookMaps = data.whereType<Map<String, dynamic>>();
-      cloudBooks = bookMaps.map((json) {
-        return Ebook(
-          id: json['id']?.toString() ?? '',
-          title: json['title'] ?? '',
+      final responses = await Future.wait([
+        LearnerDashboardApiService.instance.fetchBooks(),
+        LearnerDashboardApiService.instance.fetchELibrary(),
+      ]);
+
+      final List<dynamic> allData = [];
+      for (final data in responses) {
+        allData.addAll(data);
+      }
+
+      debugPrint('Learner dashboard returned ${allData.length} items');
+
+      for (final json in allData.whereType<Map<String, dynamic>>()) {
+        final id = json['id']?.toString() ?? '';
+        if (id.isEmpty || cloudBooksMap.containsKey(id)) continue;
+
+        final rawCover =
+            json['cover_url'] ??
+            json['coverUrl'] ??
+            ImageUrlResolver.fromMap(json, baseUrl: _booksImageBaseUrl);
+        final coverUrl = ImageUrlResolver.normalize(
+          rawCover,
+          baseUrl: _booksImageBaseUrl,
+        );
+
+        String? rawPdf = json['pdf_url'] ?? json['file_url'] ?? json['url'];
+        if (rawPdf != null && rawPdf.contains(' ') && !rawPdf.contains('%20')) {
+          rawPdf = rawPdf.replaceAll(' ', '%20');
+        }
+
+        cloudBooksMap[id] = Ebook(
+          id: id,
+          title: json['title'] ?? json['book_title'] ?? '',
           author: json['author'] ?? json['publisher'] ?? 'Unknown Author',
-          serverUrl: json['pdf_url'] ?? json['file_url'] ?? json['url'] ?? '',
+          coverUrl: coverUrl,
+          serverUrl: rawPdf ?? '',
           fileSize: json['file_size'] is int
               ? json['file_size']
               : int.tryParse(json['file_size']?.toString() ?? '0') ?? 0,
           downloadedDate: null,
           grade: json['grade']?.toString() ?? json['course']?.toString() ?? '',
           category: json['category'] ?? 'Textbooks',
-          coverImagePath: ImageUrlResolver.fromMap(
-            json,
-            baseUrl: _booksImageBaseUrl,
-          ),
+          coverImagePath:
+              coverUrl, // Use this for the URL as in reference project
           totalPages: json['pages'] ?? json['total_pages'] ?? 0,
           isDownloaded: false,
         );
-      }).toList();
-      debugPrint('Parsed ${cloudBooks.length} books from fetchBooks');
-
-      if (cloudBooks.isEmpty) {
-        debugPrint('No books from fetchBooks, trying fetchELibrary...');
-        final elibraryData = await LearnerDashboardApiService.instance
-            .fetchELibrary();
-        debugPrint('fetchELibrary returned ${elibraryData.length} items');
-        cloudBooks = elibraryData.whereType<Map<String, dynamic>>().map((json) {
-          return Ebook(
-            id: json['id']?.toString() ?? '',
-            title: json['title'] ?? '',
-            author: json['author'] ?? json['publisher'] ?? 'Unknown Author',
-            serverUrl: json['pdf_url'] ?? json['file_url'] ?? json['url'] ?? '',
-            fileSize: json['file_size'] is int
-                ? json['file_size']
-                : int.tryParse(json['file_size']?.toString() ?? '0') ?? 0,
-            downloadedDate: null,
-            grade:
-                json['grade']?.toString() ?? json['course']?.toString() ?? '',
-            category: json['category'] ?? 'Textbooks',
-            coverImagePath: ImageUrlResolver.fromMap(
-              json,
-              baseUrl: _booksImageBaseUrl,
-            ),
-            totalPages: json['pages'] ?? json['total_pages'] ?? 0,
-            isDownloaded: false,
-          );
-        }).toList();
-        debugPrint('Parsed ${cloudBooks.length} books from fetchELibrary');
       }
 
+      List<Ebook> cloudBooks = cloudBooksMap.values.toList();
+      debugPrint('Parsed ${cloudBooks.length} unique books from API');
+
       if (cloudBooks.isEmpty) {
-        debugPrint('No books from API, falling back to PhpApiService...');
+        debugPrint('No books from API, falling back to Textbooks category...');
         cloudBooks = await _apiService.getBooksByCategory('Textbooks');
-        debugPrint('PhpApiService returned ${cloudBooks.length} books');
+        debugPrint('Category fallback returned ${cloudBooks.length} books');
       }
 
       final localBooks = await _databaseService.getAllEbooks();
@@ -599,8 +636,8 @@ class _HomeScreenState extends State<HomeScreen>
 
               return Transform(
                 transform: Matrix4.identity()
-                  ..translateByDouble(slide, 0, 0, 1)
-                  ..scaleByDouble(scale, scale, 1, 1),
+                  ..translate(slide, 0.0, 0.0)
+                  ..scale(scale, scale, 1.0),
                 alignment: Alignment.centerLeft,
                 child: Container(
                   decoration: BoxDecoration(
@@ -630,10 +667,12 @@ class _HomeScreenState extends State<HomeScreen>
                           child: GestureDetector(
                             behavior: HitTestBehavior.translucent,
                             onHorizontalDragUpdate: (details) {
+                              if (_searchFocusNode.hasFocus) return;
                               _drawerController.value +=
                                   details.primaryDelta! / 260.0;
                             },
                             onHorizontalDragEnd: (details) {
+                              if (_searchFocusNode.hasFocus) return;
                               if (details.primaryVelocity! > 300) {
                                 _drawerController.forward();
                               } else if (details.primaryVelocity! < -300) {
@@ -653,10 +692,12 @@ class _HomeScreenState extends State<HomeScreen>
                             child: GestureDetector(
                               onTap: _toggleDrawer,
                               onHorizontalDragUpdate: (details) {
+                                if (_searchFocusNode.hasFocus) return;
                                 _drawerController.value +=
                                     details.primaryDelta! / 260.0;
                               },
                               onHorizontalDragEnd: (details) {
+                                if (_searchFocusNode.hasFocus) return;
                                 if (details.primaryVelocity! > 300) {
                                   _drawerController.forward();
                                 } else if (details.primaryVelocity! < -300) {
@@ -826,20 +867,18 @@ class _HomeScreenState extends State<HomeScreen>
                 .toList();
           }
 
+          final catalogBooks = _dedupeBooks([...myBooks, ...discoverBooks]);
+
           // Search only applies to Discover
           if (_searchQuery.isNotEmpty) {
-            discoverBooks = discoverBooks
-                .where(
-                  (e) =>
-                      e.title.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ) ||
-                      e.author.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ),
-                )
-                .toList();
+            myBooks = _searchBooks(myBooks, _searchQuery);
+            discoverBooks = _searchBooks(discoverBooks, _searchQuery);
           }
+
+          final searchSuggestions =
+              _searchQuery.trim().isNotEmpty && _isSearchActive
+              ? _buildSearchSuggestions(catalogBooks, _searchQuery)
+              : <Ebook>[];
 
           return DefaultTabController(
             length: 2,
@@ -857,9 +896,32 @@ class _HomeScreenState extends State<HomeScreen>
                       Expanded(
                         child: TextField(
                           controller: _searchController,
+                          focusNode: _searchFocusNode,
+                          autofocus: false,
+                          textInputAction: TextInputAction.search,
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          textAlignVertical: TextAlignVertical.center,
                           onChanged: (value) {
                             setState(() {
                               _searchQuery = value;
+                              _isSearchActive = _searchFocusNode.hasFocus;
+                            });
+                          },
+                          onSubmitted: (_) {
+                            if (_searchQuery.trim().isEmpty) {
+                              _resetSearch(refreshBooks: true);
+                            } else {
+                              setState(() {
+                                _isSearchActive = false;
+                              });
+                              _searchFocusNode.unfocus();
+                            }
+                          },
+                          onTapOutside: (_) {
+                            _searchFocusNode.unfocus();
+                            setState(() {
+                              _isSearchActive = false;
                             });
                           },
                           decoration: InputDecoration(
@@ -868,6 +930,19 @@ class _HomeScreenState extends State<HomeScreen>
                               Icons.search,
                               color: AppColors.lightGreen,
                             ),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    tooltip: 'Clear search',
+                                    icon: const Icon(
+                                      Icons.close,
+                                      color: AppColors.lightGreen,
+                                    ),
+                                    onPressed: () {
+                                      _resetSearch(refreshBooks: true);
+                                      _searchFocusNode.unfocus();
+                                    },
+                                  )
+                                : null,
                             contentPadding: const EdgeInsets.symmetric(
                               vertical: 0,
                               horizontal: 16,
@@ -904,6 +979,31 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
 
+                if (searchSuggestions.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Material(
+                      color: Colors.white,
+                      elevation: 4,
+                      shadowColor: Colors.black12,
+                      borderRadius: BorderRadius.circular(20),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 220),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: searchSuggestions.length,
+                          separatorBuilder: (_, _) =>
+                              const Divider(height: 1, thickness: 1),
+                          itemBuilder: (context, index) {
+                            final book = searchSuggestions[index];
+                            return _buildSearchSuggestionTile(book);
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+
                 // Tabs
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -936,8 +1036,8 @@ class _HomeScreenState extends State<HomeScreen>
                     unselectedLabelColor: Colors.black54,
                     labelStyle: const TextStyle(fontWeight: FontWeight.bold),
                     tabs: const [
-                      Tab(text: 'My Books'),
-                      Tab(text: 'Discover'),
+                      Tab(text: 'Downloaded Books'),
+                      Tab(text: 'Get Books'),
                     ],
                   ),
                 ),
@@ -950,8 +1050,18 @@ class _HomeScreenState extends State<HomeScreen>
                     onRefresh: _refreshLibrary,
                     child: TabBarView(
                       children: [
-                        _buildBookGrid(myBooks),
-                        _buildBookGrid(discoverBooks),
+                        _buildBookGrid(
+                          myBooks,
+                          emptyMessage: _searchQuery.isNotEmpty
+                              ? 'No downloaded books match your search'
+                              : 'No downloaded books available',
+                        ),
+                        _buildBookGrid(
+                          discoverBooks,
+                          emptyMessage: _searchQuery.isNotEmpty
+                              ? 'No books match your search'
+                              : 'No books available',
+                        ),
                       ],
                     ),
                   ),
@@ -964,7 +1074,206 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildBookGrid(List<Ebook> books) {
+  List<Ebook> _dedupeBooks(List<Ebook> books) {
+    final seen = <String>{};
+    final deduped = <Ebook>[];
+
+    for (final book in books) {
+      final key = book.id.trim();
+      if (key.isEmpty) continue;
+      if (seen.add(key)) {
+        deduped.add(book);
+      }
+    }
+
+    return deduped;
+  }
+
+  List<Ebook> _buildSearchSuggestions(List<Ebook> books, String query) {
+    final normalizedQuery = _normalizeSearchText(query);
+    if (normalizedQuery.isEmpty) {
+      return [];
+    }
+
+    final scored =
+        books
+            .map(
+              (book) =>
+                  MapEntry(book, _scoreBookForQuery(book, normalizedQuery)),
+            )
+            .where((entry) => entry.value > 0)
+            .toList()
+          ..sort((a, b) {
+            final scoreCompare = b.value.compareTo(a.value);
+            if (scoreCompare != 0) return scoreCompare;
+            return a.key.title.compareTo(b.key.title);
+          });
+
+    return scored.take(6).map((entry) => entry.key).toList();
+  }
+
+  List<Ebook> _searchBooks(List<Ebook> books, String query) {
+    final normalizedQuery = _normalizeSearchText(query);
+    if (normalizedQuery.isEmpty) {
+      return books;
+    }
+
+    final scored =
+        books
+            .map(
+              (book) =>
+                  MapEntry(book, _scoreBookForQuery(book, normalizedQuery)),
+            )
+            .where((entry) => entry.value > 0)
+            .toList()
+          ..sort((a, b) {
+            final scoreCompare = b.value.compareTo(a.value);
+            if (scoreCompare != 0) return scoreCompare;
+            return a.key.title.compareTo(b.key.title);
+          });
+
+    return scored.map((entry) => entry.key).toList();
+  }
+
+  int _scoreBookForQuery(Ebook book, String normalizedQuery) {
+    final normalizedTitle = _normalizeSearchText(book.title);
+    final normalizedAuthor = _normalizeSearchText(book.author);
+    final normalizedGrade = _normalizeSearchText(book.grade);
+    final normalizedCategory = _normalizeSearchText(book.category);
+    final normalizedDescription = _normalizeSearchText(book.description ?? '');
+    final tokens = normalizedQuery
+        .split(' ')
+        .where((t) => t.isNotEmpty)
+        .toList();
+
+    var score = 0;
+
+    if (normalizedTitle == normalizedQuery) score += 200;
+    if (normalizedAuthor == normalizedQuery) score += 160;
+
+    if (normalizedTitle.startsWith(normalizedQuery)) score += 120;
+    if (normalizedAuthor.startsWith(normalizedQuery)) score += 90;
+
+    if (normalizedTitle.contains(normalizedQuery)) score += 80;
+    if (normalizedAuthor.contains(normalizedQuery)) score += 60;
+    if (normalizedGrade.contains(normalizedQuery)) score += 50;
+    if (normalizedCategory.contains(normalizedQuery)) score += 40;
+    if (normalizedDescription.contains(normalizedQuery)) score += 20;
+
+    for (final token in tokens) {
+      if (normalizedTitle.contains(token)) score += 25;
+      if (normalizedAuthor.contains(token)) score += 18;
+      if (normalizedGrade.contains(token)) score += 14;
+      if (normalizedCategory.contains(token)) score += 10;
+      if (normalizedDescription.contains(token)) score += 6;
+    }
+
+    return score;
+  }
+
+  String _normalizeSearchText(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  Widget _buildSearchSuggestionTile(Ebook book) {
+    final coverUrl = book.coverUrl ?? _remoteCoverFromPath(book.coverImagePath);
+
+    return ListTile(
+      onTap: () {
+        setState(() {
+          _searchController.text = book.title;
+          _searchController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _searchController.text.length),
+          );
+          _searchQuery = book.title;
+          _isSearchActive = false;
+        });
+      },
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: 44,
+          height: 56,
+          color: Colors.grey.shade200,
+          child: coverUrl != null && coverUrl.isNotEmpty
+              ? Image.network(
+                  coverUrl,
+                  width: 44,
+                  height: 56,
+                  fit: BoxFit.cover,
+                  webHtmlElementStrategy: kIsWeb
+                      ? WebHtmlElementStrategy.prefer
+                      : WebHtmlElementStrategy.never,
+                  errorBuilder: (_, _, _) => _buildPlaceholderCover(),
+                )
+              : _buildPlaceholderCover(),
+        ),
+      ),
+      title: Text(
+        book.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontWeight: FontWeight.w700,
+          color: AppColors.brandGreen,
+        ),
+      ),
+      subtitle: Text(
+        [
+          if (book.author.isNotEmpty) book.author,
+          if (book.grade.isNotEmpty) book.grade,
+          if (book.category.isNotEmpty) book.category,
+        ].join(' • '),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 12, color: Colors.black54),
+      ),
+      trailing: const Icon(
+        Icons.north_west_rounded,
+        color: AppColors.lightGreen,
+      ),
+    );
+  }
+
+  String? _remoteCoverFromPath(String? coverImagePath) {
+    if (coverImagePath == null || coverImagePath.isEmpty) {
+      return null;
+    }
+
+    final trimmed = coverImagePath.trim();
+    final looksRemote =
+        trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('//') ||
+        trimmed.startsWith('www.');
+    if (!looksRemote) {
+      return null;
+    }
+
+    final normalized = ImageUrlResolver.normalize(
+      trimmed,
+      baseUrl: _booksImageBaseUrl,
+    );
+    if (normalized == null) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(normalized);
+    if (uri == null || !uri.hasScheme) {
+      return null;
+    }
+
+    return normalized;
+  }
+
+  Widget _buildBookGrid(
+    List<Ebook> books, {
+    required String emptyMessage,
+  }) {
     if (books.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -980,9 +1289,10 @@ class _HomeScreenState extends State<HomeScreen>
                   height: 64,
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'No books available',
-                  style: TextStyle(fontSize: 16, color: Colors.black45),
+                Text(
+                  emptyMessage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, color: Colors.black45),
                 ),
               ],
             ),
@@ -1020,8 +1330,12 @@ class _HomeScreenState extends State<HomeScreen>
     final isDownloading = _downloadProgress.containsKey(book.id);
     final progressNotifier = _downloadProgress[book.id];
     final isDownloaded = book.isDownloaded;
+
+    // In this project, we align with the reference project where
+    // cloud cover URLs are stored in coverImagePath for cloud books.
     final remoteCoverUrl = ImageUrlResolver.normalize(
-      book.coverImagePath ?? book.coverUrl,
+      book.coverImagePath,
+      baseUrl: _booksImageBaseUrl,
     );
 
     return GestureDetector(
@@ -1067,52 +1381,16 @@ class _HomeScreenState extends State<HomeScreen>
                           width: double.infinity,
                           fit: BoxFit.cover,
                         );
-                      } else if (!isDownloaded && remoteCoverUrl != null) {
-                        // Show network image for cloud books
+                      } else if (remoteCoverUrl != null &&
+                          remoteCoverUrl.isNotEmpty) {
                         return Image.network(
                           remoteCoverUrl,
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  AppColors.lightGreen.withValues(alpha: 0.3),
-                                  AppColors.lightGreen.withValues(alpha: 0.3),
-                                ],
-                              ),
-                            ),
-                            child: Center(
-                              child: Image.asset(
-                                'assets/images/app_icon.png',
-                                width: 60,
-                                height: 60,
-                              ),
-                            ),
-                          ),
+                          errorBuilder: (_, _, _) => _buildPlaceholderCover(),
                         );
                       }
-                      return Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              AppColors.lightGreen.withValues(alpha: 0.3),
-                              AppColors.lightGreen.withValues(alpha: 0.3),
-                            ],
-                          ),
-                        ),
-                        child: Center(
-                          child: Image.asset(
-                            'assets/images/app_icon.png',
-                            width: 60,
-                            height: 60,
-                          ),
-                        ),
-                      );
+                      return _buildPlaceholderCover();
                     },
                   ),
                 ),
@@ -1202,13 +1480,49 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _buildPlaceholderCover() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.lightGreen.withValues(alpha: 0.3),
+            AppColors.lightGreen.withValues(alpha: 0.3),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Image.asset('assets/images/app_icon.png', width: 60, height: 60),
+      ),
+    );
+  }
+
   Future<Uint8List?> _getThumbnail(
     String localPath, {
     String? coverImagePath,
   }) async {
     try {
-      final storageDir = await _storageService.getEbooksDirectory();
-      final fullPath = '${storageDir.path}/$localPath';
+      // If coverImagePath is absolute, use it directly
+      if (coverImagePath != null &&
+          (coverImagePath.startsWith('/') ||
+              coverImagePath.contains(':/') ||
+              coverImagePath.contains(':\\'))) {
+        final file = File(coverImagePath);
+        if (await file.exists()) {
+          return await file.readAsBytes();
+        }
+      }
+
+      // If localPath is absolute, use it directly
+      String fullPath = localPath;
+      if (!localPath.startsWith('/') &&
+          !localPath.contains(':/') &&
+          !localPath.contains(':\\')) {
+        final storageDir = await _storageService.getEbooksDirectory();
+        fullPath = '${storageDir.path}/$localPath';
+      }
+
       final thumbnailService = ThumbnailService();
       return await thumbnailService.getThumbnail(
         fullPath,

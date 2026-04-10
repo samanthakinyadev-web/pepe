@@ -1,12 +1,12 @@
+import 'package:flutter/material.dart';
 import 'package:elimupepe/models/menu_item.dart';
+import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:elimupepe/core/widgets/elimu_card.dart';
+import 'package:elimupepe/core/widgets/elimu_button.dart';
+import 'package:elimupepe/core/utils/image_url_resolver.dart';
 import 'package:elimupepe/features/quiz/quiz_session_screen.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:elimupepe/core/widgets/elimu_button.dart';
-import 'package:elimupepe/core/widgets/elimu_card.dart';
-import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
-import 'package:elimupepe/core/utils/image_url_resolver.dart';
 
 class CategoryItemsScreen extends StatefulWidget {
   final MenuItem menuItem;
@@ -183,9 +183,18 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
             final item = items[index];
             final title = _extractTitle(item, index, widget.menuItem.id);
             final subtitle = _extractSubtitle(item, widget.menuItem.id);
-            final imageUrl = item is Map<String, dynamic>
+            String? imageUrl = item is Map<String, dynamic>
                 ? ImageUrlResolver.fromMap(item)
                 : null;
+
+            if (imageUrl != null) {
+              if (imageUrl.contains('/http')) {
+                imageUrl = imageUrl.substring(imageUrl.indexOf('/http') + 1);
+              }
+              if (imageUrl.contains(' ') && !imageUrl.contains('%20')) {
+                imageUrl = imageUrl.replaceAll(' ', '%20');
+              }
+            }
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),

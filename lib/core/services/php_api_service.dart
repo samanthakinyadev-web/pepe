@@ -10,6 +10,35 @@ class PhpApiService {
   final Dio _dio = Dio();
   static const String _baseUrl = 'https://api-ebooks.loholearning.co.ke';
 
+  Ebook _mapBook(Map<String, dynamic> json) {
+    String? rawCover = json['cover_url'] ?? json['coverUrl'];
+    String? coverUrl = ImageUrlResolver.normalize(rawCover, baseUrl: _baseUrl);
+
+    String? rawPdf = json['pdf_url'] ?? json['pdfUrl'];
+    if (rawPdf != null && rawPdf.contains(' ') && !rawPdf.contains('%20')) {
+      rawPdf = rawPdf.replaceAll(' ', '%20');
+    }
+
+    return Ebook(
+      id: json['id']?.toString() ?? '',
+      title: json['title'] ?? '',
+      author: json['author'] ?? json['publisher'] ?? '',
+      coverUrl: coverUrl,
+      coverImagePath: coverUrl,
+      serverUrl: rawPdf ?? '',
+      fileSize: json['file_size'] ?? json['fileSize'] ?? 0,
+      downloadedDate: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'])
+          : (json['addedDate'] != null
+                ? DateTime.tryParse(json['addedDate'])
+                : DateTime.now()),
+      grade: json['grade'] ?? '',
+      category: json['category'] ?? 'Textbooks',
+      totalPages: 0,
+      isDownloaded: false,
+    );
+  }
+
   Future<List<Ebook>> getCloudBooks() async {
     try {
       final response = await _dio.get('$_baseUrl/books');
@@ -17,25 +46,10 @@ class PhpApiService {
         final List<dynamic> booksJson = response.data is List
             ? response.data
             : response.data['data'] ?? response.data['books'] ?? [];
-        return booksJson.map((json) {
-          return Ebook(
-            id: json['id']?.toString() ?? '',
-            title: json['title'] ?? '',
-            author: json['author'] ?? json['publisher'] ?? '',
-            serverUrl: json['pdf_url'] ?? json['pdfUrl'] ?? '',
-            fileSize: json['file_size'] ?? json['fileSize'] ?? 0,
-            downloadedDate: json['created_at'] != null
-                ? DateTime.tryParse(json['created_at'])
-                : (json['addedDate'] != null
-                      ? DateTime.tryParse(json['addedDate'])
-                      : DateTime.now()),
-            grade: json['grade'] ?? '',
-            category: json['category'] ?? 'Textbooks',
-            coverImagePath: ImageUrlResolver.fromMap(json, baseUrl: _baseUrl),
-            totalPages: 0,
-            isDownloaded: false,
-          );
-        }).toList();
+        return booksJson
+            .whereType<Map<String, dynamic>>()
+            .map(_mapBook)
+            .toList();
       }
       return [];
     } catch (e) {
@@ -54,23 +68,10 @@ class PhpApiService {
         final List<dynamic> booksJson = response.data is List
             ? response.data
             : response.data['data'] ?? response.data['books'] ?? [];
-        return booksJson.map((json) {
-          return Ebook(
-            id: json['id']?.toString() ?? '',
-            title: json['title'] ?? '',
-            author: json['author'] ?? json['publisher'] ?? '',
-            serverUrl: json['pdf_url'] ?? json['pdfUrl'] ?? '',
-            fileSize: json['file_size'] ?? json['fileSize'] ?? 0,
-            downloadedDate: json['created_at'] != null
-                ? DateTime.tryParse(json['created_at'])
-                : DateTime.now(),
-            grade: json['grade'] ?? '',
-            category: json['category'] ?? 'Textbooks',
-            coverImagePath: ImageUrlResolver.fromMap(json, baseUrl: _baseUrl),
-            totalPages: 0,
-            isDownloaded: false,
-          );
-        }).toList();
+        return booksJson
+            .whereType<Map<String, dynamic>>()
+            .map(_mapBook)
+            .toList();
       }
       return [];
     } catch (e) {
@@ -90,23 +91,10 @@ class PhpApiService {
         final List<dynamic> booksJson = response.data is List
             ? response.data
             : response.data['data'] ?? response.data['books'] ?? [];
-        return booksJson.map((json) {
-          return Ebook(
-            id: json['id']?.toString() ?? '',
-            title: json['title'] ?? '',
-            author: json['author'] ?? json['publisher'] ?? '',
-            serverUrl: json['pdf_url'] ?? json['pdfUrl'] ?? '',
-            fileSize: json['file_size'] ?? json['fileSize'] ?? 0,
-            downloadedDate: json['created_at'] != null
-                ? DateTime.tryParse(json['created_at'])
-                : DateTime.now(),
-            grade: json['grade'] ?? '',
-            category: json['category'] ?? 'Textbooks',
-            coverImagePath: ImageUrlResolver.fromMap(json, baseUrl: _baseUrl),
-            totalPages: 0,
-            isDownloaded: false,
-          );
-        }).toList();
+        return booksJson
+            .whereType<Map<String, dynamic>>()
+            .map(_mapBook)
+            .toList();
       }
       return [];
     } catch (e) {
@@ -125,23 +113,10 @@ class PhpApiService {
         final List<dynamic> booksJson = response.data is List
             ? response.data
             : response.data['data'] ?? response.data['books'] ?? [];
-        return booksJson.map((json) {
-          return Ebook(
-            id: json['id']?.toString() ?? '',
-            title: json['title'] ?? '',
-            author: json['author'] ?? json['publisher'] ?? '',
-            serverUrl: json['pdf_url'] ?? json['pdfUrl'] ?? '',
-            fileSize: json['file_size'] ?? json['fileSize'] ?? 0,
-            downloadedDate: json['created_at'] != null
-                ? DateTime.tryParse(json['created_at'])
-                : DateTime.now(),
-            grade: json['grade'] ?? '',
-            category: json['category'] ?? 'Textbooks',
-            coverImagePath: ImageUrlResolver.fromMap(json, baseUrl: _baseUrl),
-            totalPages: 0,
-            isDownloaded: false,
-          );
-        }).toList();
+        return booksJson
+            .whereType<Map<String, dynamic>>()
+            .map(_mapBook)
+            .toList();
       }
       return [];
     } catch (e) {

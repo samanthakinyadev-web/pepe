@@ -57,7 +57,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => WebViewContentScreen(title: title, url: webviewLoginUrl),
+        builder: (_) =>
+            WebViewContentScreen(title: title, url: webviewLoginUrl),
       ),
     );
   }
@@ -117,8 +118,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
 
         // Fetch profile image URL (Specifically using 'avatar' from API)
-        final avatar = ImageUrlResolver.fromMap(userData);
+        String? avatar = ImageUrlResolver.fromMap(userData);
         if (avatar != null && avatar.isNotEmpty) {
+          if (avatar.contains('/http')) {
+            avatar = avatar.substring(avatar.indexOf('/http') + 1);
+          }
+          if (avatar.contains(' ') && !avatar.contains('%20')) {
+            avatar = avatar.replaceAll(' ', '%20');
+          }
           _profileImageUrl = avatar;
         }
 

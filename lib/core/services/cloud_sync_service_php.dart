@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:elimupepe/models/ebook.dart';
-import 'package:elimupepe/core/services/database_service.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:elimupepe/core/services/php_api_service.dart';
+import 'package:elimupepe/core/services/database_service.dart';
 
 /// Service to sync cloud books from PHP backend and download them locally
 class CloudSyncServicePhp {
@@ -101,7 +101,13 @@ class CloudSyncServicePhp {
       }
 
       // The serverUrl is already the direct download URL from PHP API
-      final downloadUrl = cloudBook.serverUrl ?? '';
+      String downloadUrl = cloudBook.serverUrl ?? '';
+      if (downloadUrl.contains('/http')) {
+        downloadUrl = downloadUrl.substring(downloadUrl.indexOf('/http') + 1);
+      }
+      if (downloadUrl.contains(' ') && !downloadUrl.contains('%20')) {
+        downloadUrl = downloadUrl.replaceAll(' ', '%20');
+      }
       print('Download URL: $downloadUrl');
 
       // Sanitize filename
@@ -142,12 +148,20 @@ class CloudSyncServicePhp {
       // Download thumbnail if available
       if (cloudBook.coverImagePath != null &&
           cloudBook.coverImagePath!.isNotEmpty) {
+        String coverUrl = cloudBook.coverImagePath!;
+        if (coverUrl.contains('/http')) {
+          coverUrl = coverUrl.substring(coverUrl.indexOf('/http') + 1);
+        }
+        if (coverUrl.contains(' ') && !coverUrl.contains('%20')) {
+          coverUrl = coverUrl.replaceAll(' ', '%20');
+        }
+
         try {
-          print('Downloading thumbnail: ${cloudBook.coverImagePath}');
+          print('Downloading thumbnail: $coverUrl');
           thumbnailPath = '${ebooksDir.path}/$safeFileName.jpg';
           await _dio
               .download(
-                cloudBook.coverImagePath!,
+                coverUrl,
                 thumbnailPath,
                 options: Options(receiveTimeout: const Duration(seconds: 60)),
               )

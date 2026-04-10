@@ -54,23 +54,25 @@ class Ebook {
 
   // Create from JSON
   factory Ebook.fromJson(Map<String, dynamic> json) {
+    final rawCover =
+        json['coverUrl'] ?? json['cover_url'] ?? json['coverImagePath'];
     return Ebook(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      author: json['author'] as String,
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      author: json['author']?.toString() ?? '',
       description: json['description'] as String?,
-      coverUrl: json['coverUrl'] as String?,
+      coverUrl: rawCover?.toString(),
       localPath: json['localPath'] as String?,
-      totalPages: json['totalPages'] as int,
+      totalPages: (json['totalPages'] as int?) ?? 0,
       downloadedDate: json['downloadedDate'] != null
           ? DateTime.tryParse(json['downloadedDate'] as String)
           : null,
-      isDownloaded: (json['isDownloaded'] as int) == 1,
-      fileSize: json['fileSize'] as int,
+      isDownloaded: json['isDownloaded'] == 1 || json['isDownloaded'] == true,
+      fileSize: (json['fileSize'] as int?) ?? 0,
       serverUrl: json['serverUrl'] as String?,
       grade: json['grade'] as String? ?? '1',
       category: json['category'] as String? ?? 'Textbooks',
-      coverImagePath: json['coverImagePath'] as String?,
+      coverImagePath: json['coverImagePath']?.toString(),
     );
   }
 
