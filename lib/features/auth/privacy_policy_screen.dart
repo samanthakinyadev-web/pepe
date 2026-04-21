@@ -50,6 +50,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
               '2. Information We Collect',
               'We collect the following categories of information:\n\n'
                   '• Full name and profile information (parent/guardian or learner)\n'
+                  '• Profile photos and images (if you choose to upload a custom avatar)\n'
                   '• Phone number (used for Safaricom carrier billing / subscription authentication)\n'
                   '• School name and grade/class level\n'
                   '• Account credentials (username and password)\n'
@@ -69,11 +70,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
             ),
             _buildSection(
               '4. Children\'s Privacy (Under 13)',
-              'We are committed to protecting the privacy of children. Safeguards include:\n\n'
-                  '• Accounts are managed by a parent/guardian who accepts this policy.\n'
-                  '• We collect only minimum data necessary for educational purposes.\n'
-                  '• No behavioural or targeted advertising to children.\n'
-                  '• Parents may request access to or deletion of their child\'s data anytime.',
+              'Elimu Pepe is an educational platform designed for learners, including children under 13. We are committed to protecting their privacy in compliance with the Google Play Families Policy and COPPA.\n\n'
+                  '• Account Creation: Accounts cannot be created within the mobile app. All learner accounts must be created and managed by a parent or guardian via our secure web platform.\n'
+                  '• Parental Control: Parents/guardians have full control over the child\'s profile and can monitor progress or delete the account at any time through the web dashboard.\n'
+                  '• Minimal Data: We collect only the minimum data necessary for educational purposes (name, grade, and learning progress).\n'
+                  '• Safety: No behavioural or targeted advertising is served to children within the App.',
             ),
             _buildSection(
               '5. Data Deletion',

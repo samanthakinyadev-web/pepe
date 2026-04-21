@@ -1,4 +1,4 @@
-import 'login_screen.dart';
+import 'welcome_screen.dart';
 import '../parental_control/parental_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -328,9 +328,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await prefs.clear();
 
       if (!context.mounted) return;
-      // 3. Navigate back to login
+      // 3. Navigate back to the pre-login welcome flow
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
         (route) => false,
       );
     }
@@ -397,9 +397,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
 
-      // Navigate back to login
+      // Navigate back to the pre-login welcome flow
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
         (route) => false,
       );
     }

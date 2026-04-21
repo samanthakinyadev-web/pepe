@@ -7,7 +7,6 @@ import 'package:in_app_update/in_app_update.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:elimupepe/core/widgets/elimu_card.dart';
-import 'package:elimupepe/models/menu_item.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:elimupepe/features/home/home_screen.dart';
 import 'package:elimupepe/features/home/menu_screen.dart';
@@ -30,11 +29,11 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
   static const String _avatarCacheKeyPref = 'profile_image_cache_key';
   int _selectedIndex = 0; // 0: Home, 1: Quest, 2: Library, 3: Menu, 4: Profile
   final GlobalKey<ScaffoldState> _homeScaffoldKey = GlobalKey<ScaffoldState>();
+  final List<Widget?> _tabCache = List<Widget?>.filled(5, null);
   String _userName = 'Learner';
   String? _userAvatar;
   bool _isOpeningStudentDashboard = false;
   bool _questLoading = true;
-  String? _questError;
   int _coins = 0;
   int _streakDays = 0;
   int _badgeCount = 0;
@@ -148,17 +147,26 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tabs = List<Widget>.generate(5, (index) {
+      final cached = _tabCache[index];
+      if (cached != null) {
+        return cached;
+      }
+
+      if (index != _selectedIndex) {
+        return const SizedBox.shrink();
+      }
+
+      final tab = _buildTab(index);
+      _tabCache[index] = tab;
+      return tab;
+    });
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0F8FF),
       body: IndexedStack(
         index: _selectedIndex,
-        children: [
-          const MenuScreen(), // 0: Home/Menu landing
-          HomeScreen(scaffoldKey: _homeScaffoldKey), // 1: Library
-          _buildDashboardContent(), // 2: Quest
-          const MenuScreen(), // 3: Menu
-          const ProfileScreen(), // 4: Profile
-        ],
+        children: tabs,
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -196,6 +204,23 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildTab(int index) {
+    switch (index) {
+      case 0:
+        return const MenuScreen();
+      case 1:
+        return HomeScreen(scaffoldKey: _homeScaffoldKey);
+      case 2:
+        return _buildDashboardContent();
+      case 3:
+        return const MenuScreen();
+      case 4:
+        return const ProfileScreen();
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
   // --- UI COMPONENTS ---
@@ -484,7 +509,6 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
     if (mounted) {
       setState(() {
         _questLoading = true;
-        _questError = null;
       });
     }
 
@@ -539,7 +563,6 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       if (mounted) {
         setState(() {
           _questLoading = false;
-          _questError = 'Unable to load your quest progress right now.';
         });
       }
     }
@@ -619,7 +642,22 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
     }
 
     // 2. Fallback: If no Play Store update was triggered, check custom PHP backend
-    if (!playStoreUpdateTriggered) {
+    // Only perform this check if NOT on Android or if the app was NOT installed from the Play Store
+    bool shouldCheckCustom = !playStoreUpdateTriggered;
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        final packageInfo = await PackageInfo.fromPlatform();
+        final installer = packageInfo.installerStore;
+        if (installer != null && (installer.contains('vending') || installer.contains('google'))) {
+          shouldCheckCustom = false;
+          debugPrint('App installed via Play Store. Skipping custom update check.');
+        }
+      } catch (e) {
+        debugPrint('Could not determine installer store: $e');
+      }
+    }
+
+    if (shouldCheckCustom) {
       try {
         final packageInfo = await PackageInfo.fromPlatform();
         final currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;

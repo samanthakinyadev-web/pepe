@@ -1,4 +1,4 @@
-import 'login_screen.dart';
+import 'role_selection_screen.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:elimupepe/core/theme/app_page_transitions.dart';
 import 'package:elimupepe/core/widgets/elimu_button.dart';
@@ -18,7 +18,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void _navigateToLogin() {
     Navigator.of(
       context,
-    ).pushReplacement(AppPageTransitions.route(const LoginScreen()));
+    ).pushReplacement(AppPageTransitions.route(const RoleSelectionScreen()));
   }
 
   @override

@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -44,8 +44,12 @@ class _HomeScreenState extends State<HomeScreen>
   late final GlobalKey<ScaffoldState> _scaffoldKey;
   late AnimationController _drawerController;
 
-  late Future<List<Ebook>> _ebooksFuture;
-  late Future<List<Ebook>> _cloudBooksFuture;
+  List<Ebook> _ebooks = [];
+  List<Ebook> _cloudBooks = [];
+  bool _isLoadingEbooks = true;
+  bool _isLoadingCloudBooks = true;
+  String? _ebooksError;
+  String? _cloudBooksError;
   String _searchQuery = '';
   bool _isSearchActive = false;
   final TextEditingController _searchController = TextEditingController();
@@ -80,14 +84,11 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _syncAndLoadBooks();
+    _loadEbooks();
+    _loadCloudBooks();
+    _warmUpLibraryData();
     _loadLearnerGrade();
     _loadStudentCourses();
-
-    // Check for daily reward after the first frame renders
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkDailyReward();
-    });
   }
 
   @override
@@ -132,83 +133,16 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Future<void> _checkDailyReward() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lastRewardDateStr = prefs.getString('last_reward_date');
-
-    // Get today's date formatted as YYYY-MM-DD
-    final today = DateTime.now();
-    final todayStr =
-        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-
-    if (lastRewardDateStr != todayStr) {
-      // It's a new day! Show the reward dialog
-      if (mounted) {
-        _showDailyRewardDialog();
-      }
-
-      // Save today's date so it doesn't show again today
-      await prefs.setString('last_reward_date', todayStr);
-
-      // TODO: Add actual reward logic here (e.g., add points/coins to user's profile in database)
+  Future<void> _warmUpLibraryData() async {
+    // Keep the first frame responsive by loading the visible data immediately.
+    try {
+      await _cloudSyncService.removeBundledBooks();
+      await _loadEbooks();
+    } catch (e) {
+      debugPrint('Cannot remove bundled books: $e');
     }
-  }
 
-  void _showDailyRewardDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // Force them to interact to claim
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
-        title: const Text(
-          '🌟 Daily Reward! 🌟',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.lightGreen,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-                  Icons.star_rounded,
-                  color: AppColors.accentYellow,
-                  size: 80,
-                )
-                .animate(onPlay: (controller) => controller.repeat())
-                .shimmer(duration: 1200.ms, color: Colors.white)
-                .shake(hz: 4, curve: Curves.easeInOut),
-            const SizedBox(height: 16),
-            const Text(
-              'Welcome back! to Elimu Pepe !',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.black87),
-            ),
-          ],
-        ),
-        actions: [
-          Center(
-            child: ElimuButton(
-              text: 'CLAIM REWARD',
-              onPressed: () => Navigator.of(context).pop(),
-              width: 200,
-            ),
-          ),
-        ],
-      ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
-    );
-  }
-
-  Future<void> _syncAndLoadBooks() async {
-    // Remove bundled books first (offline-safe)
-    await _cloudSyncService.removeBundledBooks();
-    // Load local books first (always available, offline or online)
-    _loadEbooks();
-    _loadCloudBooks();
-
-    // Try to sync with Firebase if connected (non-blocking)
+    // Try to sync with Firebase if connected.
     try {
       await _cloudSyncService.syncDownloadedBookMetadata();
     } catch (e) {
@@ -218,27 +152,77 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _refreshLibrary() async {
-    await _loadLearnerGrade();
-    await _loadStudentCourses();
-    await _syncAndLoadBooks();
+    await Future.wait([
+      _loadLearnerGrade(),
+      _loadStudentCourses(),
+      _loadEbooks(),
+      _loadCloudBooks(),
+    ]);
   }
 
-  void _loadEbooks() {
-    setState(() {
-      _ebooksFuture = _databaseService.getAllEbooks();
-    });
+  Future<void> _loadEbooks() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingEbooks = true;
+        _ebooksError = null;
+      });
+    } else {
+      _isLoadingEbooks = true;
+      _ebooksError = null;
+    }
+
+    try {
+      final books = await _databaseService.getAllEbooks();
+      if (!mounted) return;
+      setState(() {
+        _ebooks = books;
+        _isLoadingEbooks = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _ebooksError = e.toString();
+        _isLoadingEbooks = false;
+      });
+    }
   }
 
-  void _loadCloudBooks() {
-    setState(() {
-      _cloudBooksFuture = _fetchLearnerTextbooks();
-    });
+  Future<void> _loadCloudBooks() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingCloudBooks = true;
+        _cloudBooksError = null;
+      });
+    } else {
+      _isLoadingCloudBooks = true;
+      _cloudBooksError = null;
+    }
+
+    try {
+      final books = await _fetchLearnerTextbooks();
+      if (!mounted) return;
+      setState(() {
+        _cloudBooks = books;
+        _isLoadingCloudBooks = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cloudBooksError = e.toString();
+        _isLoadingCloudBooks = false;
+      });
+    }
   }
 
   Future<List<Ebook>> _fetchLearnerTextbooks() async {
     try {
       debugPrint('Fetching books from PhpApiService...');
-      final cloudBooksFromPhp = await _apiService.getCloudBooks();
+      final results = await Future.wait([
+        _apiService.getCloudBooks(),
+        LearnerDashboardApiService.instance.fetchBooks(),
+        LearnerDashboardApiService.instance.fetchELibrary(),
+      ]);
+      final cloudBooksFromPhp = results[0] as List<Ebook>;
       debugPrint('PhpApiService returned ${cloudBooksFromPhp.length} books');
 
       final Map<String, Ebook> cloudBooksMap = {};
@@ -251,14 +235,9 @@ class _HomeScreenState extends State<HomeScreen>
       // Merge learner dashboard books as a fallback source so any extra books
       // still show up, but keep the PHP API covers and URLs when duplicates
       // exist for the same book ID.
-      debugPrint('Fetching books from LearnerDashboardApiService...');
-      final responses = await Future.wait([
-        LearnerDashboardApiService.instance.fetchBooks(),
-        LearnerDashboardApiService.instance.fetchELibrary(),
-      ]);
-
+      debugPrint('Merging learner dashboard fallback books...');
       final List<dynamic> allData = [];
-      for (final data in responses) {
+      for (final data in results.sublist(1)) {
         allData.addAll(data);
       }
 
@@ -636,8 +615,8 @@ class _HomeScreenState extends State<HomeScreen>
 
               return Transform(
                 transform: Matrix4.identity()
-                  ..translate(slide, 0.0, 0.0)
-                  ..scale(scale, scale, 1.0),
+                  ..translateByDouble(slide, 0.0, 0.0, 1)
+                  ..scaleByDouble(scale, scale, 1.0, 1),
                 alignment: Alignment.centerLeft,
                 child: Container(
                   decoration: BoxDecoration(
@@ -793,96 +772,40 @@ class _HomeScreenState extends State<HomeScreen>
       //     ),
       //   ],
       // ),
-      body: FutureBuilder<List<List<Ebook>>>(
-        future: Future.wait([_ebooksFuture, _cloudBooksFuture]),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.lightGreen),
+      body: DefaultTabController(
+        length: 2,
+        child: Builder(
+          builder: (context) {
+            final learnerCourse =
+                _learnerGrade ??
+                _selectedCourse ??
+                (_studentCourses.isNotEmpty ? _studentCourses.first : null);
+
+            var myBooks = _booksForLearnerCourse(_ebooks, learnerCourse);
+            var discoverBooks = _cloudBooks.toList();
+
+            final learnerCloudBooks = _booksForLearnerCourse(
+              discoverBooks,
+              learnerCourse,
             );
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.black45,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.black54),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final allBooks = snapshot.data?[0] ?? [];
-          final cloudBooks = snapshot.data?[1] ?? [];
-
-          var myBooks = allBooks.toList();
-          var discoverBooks = cloudBooks.toList();
-
-          // Move learner's grade cloud books to My Books (keep Discover full)
-          final learnerCourse =
-              _learnerGrade ??
-              _selectedCourse ??
-              (_studentCourses.isNotEmpty ? _studentCourses.first : null);
-          if (learnerCourse != null && learnerCourse.isNotEmpty) {
-            final normalizedLearnerCourse = _normalizeGrade(learnerCourse);
-
-            final learnerCloudBooks = discoverBooks
-                .where(
-                  (e) =>
-                      e.category == learnerCourse ||
-                      e.grade == learnerCourse ||
-                      _normalizeGrade(e.grade) == normalizedLearnerCourse,
-                )
-                .toList();
-
-            for (var book in learnerCloudBooks) {
+            for (final book in learnerCloudBooks) {
               if (!myBooks.any((b) => b.id == book.id)) {
                 myBooks.add(book);
               }
             }
-          }
 
-          // Apply active UI filters
+            if (_searchQuery.isNotEmpty) {
+              myBooks = _searchBooks(myBooks, _searchQuery);
+              discoverBooks = _searchBooks(discoverBooks, _searchQuery);
+            }
 
-          // My Books always constrained to learner grade
-          if (learnerCourse != null && learnerCourse.isNotEmpty) {
-            final normalizedLearnerCourse = _normalizeGrade(learnerCourse);
-            myBooks = myBooks
-                .where(
-                  (e) =>
-                      e.category == learnerCourse ||
-                      e.grade == learnerCourse ||
-                      _normalizeGrade(e.grade) == normalizedLearnerCourse,
-                )
-                .toList();
-          }
+            final catalogBooks = _dedupeBooks([...myBooks, ...discoverBooks]);
+            final searchSuggestions =
+                _searchQuery.trim().isNotEmpty && _isSearchActive
+                ? _buildSearchSuggestions(catalogBooks, _searchQuery)
+                : <Ebook>[];
 
-          final catalogBooks = _dedupeBooks([...myBooks, ...discoverBooks]);
-
-          // Search only applies to Discover
-          if (_searchQuery.isNotEmpty) {
-            myBooks = _searchBooks(myBooks, _searchQuery);
-            discoverBooks = _searchBooks(discoverBooks, _searchQuery);
-          }
-
-          final searchSuggestions =
-              _searchQuery.trim().isNotEmpty && _isSearchActive
-              ? _buildSearchSuggestions(catalogBooks, _searchQuery)
-              : <Ebook>[];
-
-          return DefaultTabController(
-            length: 2,
-            child: Column(
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Search Bar
@@ -978,7 +901,6 @@ class _HomeScreenState extends State<HomeScreen>
                     ],
                   ),
                 ),
-
                 if (searchSuggestions.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -1003,7 +925,6 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                   ),
-
                 // Tabs
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -1042,22 +963,24 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Tab Views
                 Expanded(
                   child: RefreshIndicator(
                     color: AppColors.lightGreen,
                     onRefresh: _refreshLibrary,
                     child: TabBarView(
                       children: [
-                        _buildBookGrid(
-                          myBooks,
+                        _buildBooksTab(
+                          books: myBooks,
+                          isLoading: _isLoadingEbooks,
+                          error: _ebooksError,
                           emptyMessage: _searchQuery.isNotEmpty
                               ? 'No downloaded books match your search'
                               : 'No downloaded books available',
                         ),
-                        _buildBookGrid(
-                          discoverBooks,
+                        _buildBooksTab(
+                          books: discoverBooks,
+                          isLoading: _isLoadingCloudBooks,
+                          error: _cloudBooksError,
                           emptyMessage: _searchQuery.isNotEmpty
                               ? 'No books match your search'
                               : 'No books available',
@@ -1067,11 +990,27 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
               ],
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
+  }
+
+  List<Ebook> _booksForLearnerCourse(List<Ebook> books, String? learnerCourse) {
+    if (learnerCourse == null || learnerCourse.isEmpty) {
+      return books.toList();
+    }
+
+    final normalizedLearnerCourse = _normalizeGrade(learnerCourse);
+    return books
+        .where(
+          (e) =>
+              e.category == learnerCourse ||
+              e.grade == learnerCourse ||
+              _normalizeGrade(e.grade) == normalizedLearnerCourse,
+        )
+        .toList();
   }
 
   List<Ebook> _dedupeBooks(List<Ebook> books) {
@@ -1110,6 +1049,54 @@ class _HomeScreenState extends State<HomeScreen>
           });
 
     return scored.take(6).map((entry) => entry.key).toList();
+  }
+
+  Widget _buildBooksTab({
+    required List<Ebook> books,
+    required bool isLoading,
+    required String? error,
+    required String emptyMessage,
+  }) {
+    if (error != null && books.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 120),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.black45,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  error,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (isLoading && books.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 140),
+          Center(
+            child: CircularProgressIndicator(color: AppColors.lightGreen),
+          ),
+        ],
+      );
+    }
+
+    return _buildBookGrid(books, emptyMessage: emptyMessage);
   }
 
   List<Ebook> _searchBooks(List<Ebook> books, String query) {

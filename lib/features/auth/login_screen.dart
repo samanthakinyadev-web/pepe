@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/theme/wave_clipper.dart';
 import 'package:elimupepe/core/widgets/elimu_button.dart';
 import 'package:elimupepe/core/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/core/widgets/elimu_text_field.dart';
 import 'package:elimupepe/features/home/dashboard_screen.dart';
+import 'package:elimupepe/core/theme/app_page_transitions.dart';
 import 'package:elimupepe/features/teacher/teacher_dashboard.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:elimupepe/features/auth/role_selection_screen.dart';
 import 'package:elimupepe/features/auth/terms_conditions_screen.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/features/parental_control/parent_dashboard.dart';
@@ -23,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   bool _rememberMe = false;
   bool _isLoading = false;
@@ -43,10 +47,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (rememberMe) {
       final email = prefs.getString('saved_email') ?? '';
-      final password = prefs.getString('saved_password') ?? '';
+
+      // Try reading from secure storage first
+      String? password = await _secureStorage.read(key: 'saved_password');
+
+      // Migration: If not in secure storage, check old insecure storage
+      if (password == null) {
+        password = prefs.getString('saved_password') ?? '';
+        if (password.isNotEmpty) {
+          // Move to secure storage and remove from insecure
+          await _secureStorage.write(key: 'saved_password', value: password);
+          await prefs.remove('saved_password');
+        }
+      }
+
       if (mounted) {
         _emailController.text = email;
-        _passwordController.text = password;
+        _passwordController.text = password ?? '';
         setState(() => _rememberMe = rememberMe);
       }
     }
@@ -108,10 +125,17 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_rememberMe) {
         await prefs.setBool('remember_me', true);
         await prefs.setString('saved_email', _emailController.text.trim());
-        await prefs.setString('saved_password', _passwordController.text);
+        // Securely store the password
+        await _secureStorage.write(
+          key: 'saved_password',
+          value: _passwordController.text,
+        );
+        // Clean up old insecure storage if it exists
+        await prefs.remove('saved_password');
       } else {
         await prefs.remove('remember_me');
         await prefs.remove('saved_email');
+        await _secureStorage.delete(key: 'saved_password');
         await prefs.remove('saved_password');
       }
 
@@ -257,7 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 children: [
                                   ElimuTextField(
                                     icon: Icons.person_outline_rounded,
-                                    label: 'Email or Loho ID',
+                                    label: 'Email or student ID',
                                     hint: 'Enter your Email or Loho ID',
                                     controller: _emailController,
                                     keyboardType: TextInputType.emailAddress,
@@ -302,9 +326,31 @@ class _LoginScreenState extends State<LoginScreen> {
                             .animate()
                             .fadeIn(delay: 800.ms, duration: 600.ms)
                             .slideY(begin: 0.2),
+                        const SizedBox(height: 10),
+                        TextButton(
+                              onPressed: _isLoading
+                                  ? null
+                                  : () {
+                                      Navigator.of(context).pushReplacement(
+                                        AppPageTransitions.route(
+                                          const RoleSelectionScreen(),
+                                        ),
+                                      );
+                                    },
+                              child: const Text(
+                                'Back to role selection',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            )
+                            .animate()
+                            .fadeIn(delay: 850.ms, duration: 600.ms)
+                            .slideY(begin: 0.2),
                         const SizedBox(height: 32),
                         Text(
-                          'No account yet? Contact admin for access',
+                          'No account yet? dial *544*14#',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 14,
@@ -371,7 +417,7 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           },
           child: const Text(
-            'Forgot password?',
+            '',
             style: TextStyle(
               color: Colors.white,
               fontSize: 14,

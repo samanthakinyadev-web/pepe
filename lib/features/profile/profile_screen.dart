@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:elimupepe/core/services/auth_service.dart';
-import 'package:elimupepe/features/auth/login_screen.dart';
+import 'package:elimupepe/features/auth/welcome_screen.dart';
 import 'package:elimupepe/core/utils/image_url_resolver.dart';
 import 'package:elimupepe/features/settings/about_screen.dart';
 import 'package:elimupepe/core/services/user_data_service.dart';
@@ -336,9 +336,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await prefs.clear();
 
       if (!context.mounted) return;
-      // 3. Navigate back to login
+      // 3. Navigate back to the pre-login welcome flow
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
         (route) => false,
       );
     }
