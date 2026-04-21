@@ -8,12 +8,16 @@ class LoginResult {
   final String message;
   final int? roleId;
   final String? roleName;
+  final String? studentId;
+  final String? name;
 
   const LoginResult({
     required this.success,
     required this.message,
     this.roleId,
     this.roleName,
+    this.studentId,
+    this.name,
   });
 }
 
@@ -25,17 +29,14 @@ class AuthService {
   static const String _baseUrl = 'https://elimupepe.loholearning.co.ke/api';
   static const String _tokenKey = 'auth_token';
   static const String _passportTokenKey = 'passport_token';
-  static const String _emailKey = 'auth_email';
+  static const String _studentIdKey = 'auth_student_id';
+  static const String _legacyEmailKey = 'auth_email';
   static const String _userIdKey = 'auth_user_id';
   static const String _roleIdKey = 'auth_role_id';
   static const String _roleNameKey = 'auth_role_name';
-  static const Set<int> _allowedRoleIds = {2, 3, 7};
+  static const Set<int> _allowedRoleIds = {3};
   static const Set<String> _allowedRoleNames = {
     'student',
-    'parent',
-    'teacher',
-    'guardian',
-    'educator',
   };
 
   final Dio _dio = Dio(
@@ -54,14 +55,28 @@ class AuthService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   Future<LoginResult> login({
-    required String email,
+    required String studentId,
     required String password,
   }) async {
     try {
-      final normalizedEmail = email.trim();
+      final normalizedStudentId = _normalizeStudentId(studentId);
+      if (_looksLikeEmail(normalizedStudentId)) {
+        return const LoginResult(
+          success: false,
+          message: 'Email login is not supported. Use your Student ID.',
+        );
+      }
+
+      if (!_isValidStudentId(normalizedStudentId)) {
+        return const LoginResult(
+          success: false,
+          message: 'Invalid Student ID format. Expected: LO-XXXXXXXX',
+        );
+      }
+
       Response<dynamic> response = await _dio.post(
         '/v1/auth/login',
-        data: {'email': normalizedEmail, 'password': password},
+        data: {'student_id': normalizedStudentId, 'password': password},
         options: Options(validateStatus: (_) => true),
       );
 
@@ -70,7 +85,11 @@ class AuthService {
       if (_hasMultipleLoginConflict(response.data)) {
         response = await _dio.post(
           '/v1/auth/login',
-          data: {'email': normalizedEmail, 'password': password, 'force': true},
+          data: {
+            'student_id': normalizedStudentId,
+            'password': password,
+            'force': true,
+          },
           options: Options(validateStatus: (_) => true),
         );
       }
@@ -102,20 +121,21 @@ class AuthService {
 
       final roleId = _extractRoleId(user);
       final roleName = _extractRoleName(user);
+      final resolvedName = _extractUserName(user);
+      final resolvedStudentId = _extractStudentId(user) ?? normalizedStudentId;
 
       if (!_isAllowedRole(roleId: roleId, roleName: roleName)) {
         return const LoginResult(
           success: false,
-          message:
-              'Access denied. This app is available to student, parent, and teacher accounts.',
+          message: 'Unauthorized.',
         );
       }
 
       await _secureStorage.write(key: _tokenKey, value: token);
       await _secureStorage.write(key: _passportTokenKey, value: token);
       await _secureStorage.write(
-        key: _emailKey,
-        value: user['email'] ?? normalizedEmail,
+        key: _studentIdKey,
+        value: resolvedStudentId,
       );
       await _secureStorage.write(
         key: _userIdKey,
@@ -133,15 +153,10 @@ class AuthService {
         message: 'Login successful',
         roleId: roleId,
         roleName: roleName,
+        studentId: resolvedStudentId,
+        name: resolvedName,
       );
     } on DioException catch (e) {
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        return const LoginResult(
-          success: false,
-          message: 'Invalid credentials or account not allowed.',
-        );
-      }
-
       final serverMessage = _extractErrorMessage(e.response?.data);
       return LoginResult(
         success: false,
@@ -160,8 +175,9 @@ class AuthService {
 
     if (token != null && token.isNotEmpty) {
       try {
-        await _dio.get(
+        await _dio.post(
           '/v1/auth/logout',
+          data: const <String, dynamic>{},
           options: Options(headers: {'Authorization': 'Bearer $token'}),
         );
       } catch (_) {
@@ -232,8 +248,9 @@ class AuthService {
     }
 
     try {
-      final response = await _dio.get(
+      final response = await _dio.post(
         '/v1/auth/me',
+        data: const <String, dynamic>{},
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return response.statusCode == 200;
@@ -256,16 +273,16 @@ class AuthService {
       }
     }
 
-    final email = await _readSecureValue(_emailKey);
+    final studentId = await _readSecureValue(_studentIdKey);
     final userId = await _readSecureValue(_userIdKey);
 
-    if ((email != null && email.isNotEmpty) ||
+    if ((studentId != null && studentId.isNotEmpty) ||
         (userId != null && userId.isNotEmpty)) {
       final parsedId = userId != null && userId.isNotEmpty
           ? int.tryParse(userId) ?? userId
           : null;
       return {
-        if (email != null && email.isNotEmpty) 'email': email,
+        if (studentId != null && studentId.isNotEmpty) 'student_id': studentId,
         if (parsedId != null) 'id': parsedId,
       };
     }
@@ -414,8 +431,9 @@ class AuthService {
 
   Future<Map<String, dynamic>> _fetchCurrentUser(String token) async {
     try {
-      final response = await _dio.get(
+      final response = await _dio.post(
         '/v1/auth/me',
+        data: const <String, dynamic>{},
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -425,17 +443,43 @@ class AuthService {
       );
 
       final payload = response.data;
-      if (payload is Map<String, dynamic>) {
-        final data = payload['data'];
-        if (data is Map<String, dynamic>) {
-          return data;
-        }
+      final user = _extractUser(payload);
+      if (user.isNotEmpty) {
+        return user;
       }
     } catch (_) {
       // If profile fetch fails, return empty map and let role validation fail safely.
     }
 
     return {};
+  }
+
+  bool _looksLikeEmail(String value) {
+    return value.contains('@');
+  }
+
+  String _normalizeStudentId(String value) {
+    return value.trim().toUpperCase();
+  }
+
+  bool _isValidStudentId(String value) {
+    return RegExp(r'^LO-[A-Z0-9]{8}$', caseSensitive: false).hasMatch(value);
+  }
+
+  String? _extractStudentId(Map<String, dynamic> user) {
+    final raw = user['student_id'] ?? user['studentId'] ?? user['loho_id'];
+    if (raw == null) return null;
+    final text = raw.toString().trim();
+    if (text.isEmpty) return null;
+    return text.toUpperCase();
+  }
+
+  String? _extractUserName(Map<String, dynamic> user) {
+    final raw = user['name'] ?? user['full_name'] ?? user['first_name'];
+    if (raw == null) return null;
+    final text = raw.toString().trim();
+    if (text.isEmpty) return null;
+    return text;
   }
 
   Future<String?> _readSecureValue(String key) async {
@@ -451,7 +495,8 @@ class AuthService {
     for (final key in const [
       _tokenKey,
       _passportTokenKey,
-      _emailKey,
+      _studentIdKey,
+      _legacyEmailKey,
       _userIdKey,
       _roleIdKey,
       _roleNameKey,

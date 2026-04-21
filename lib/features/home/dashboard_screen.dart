@@ -4,18 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:in_app_update/in_app_update.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/widgets/elimu_card.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:elimupepe/features/home/home_screen.dart';
 import 'package:elimupepe/features/home/menu_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:elimupepe/features/parental_control/parental_gate.dart';
-import 'package:elimupepe/features/profile/profile_screen.dart';
-import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
 import 'package:elimupepe/core/utils/image_url_resolver.dart';
+import 'package:elimupepe/features/profile/profile_screen.dart';
+import 'package:elimupepe/features/parental_control/parental_gate.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
+import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
 
 class GamifiedDashboardScreen extends StatefulWidget {
   const GamifiedDashboardScreen({super.key});
@@ -57,7 +57,8 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
         _selectedIndex = prefs.getInt('last_dashboard_tab_index') ?? 0;
         _userName = prefs.getString('user_name') ?? 'Learner';
         _userAvatar = ImageUrlResolver.withCacheBuster(
-          prefs.getString('profile_image_url') ?? prefs.getString('user_avatar'),
+          prefs.getString('profile_image_url') ??
+              prefs.getString('user_avatar'),
           cacheKey: prefs.getString(_avatarCacheKeyPref),
         );
       });
@@ -82,7 +83,9 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       return;
     }
 
-    _isOpeningStudentDashboard = true;
+    setState(() {
+      _isOpeningStudentDashboard = true;
+    });
     try {
       final targetUrl =
           'https://elimupepe.loholearning.co.ke/student-dashboard';
@@ -113,7 +116,11 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
         ),
       );
     } finally {
-      _isOpeningStudentDashboard = false;
+      if (mounted) {
+        setState(() {
+          _isOpeningStudentDashboard = false;
+        });
+      }
     }
   }
 
@@ -121,28 +128,45 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
     required String title,
     required String intendedPath,
   }) async {
-    final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
-    final webviewLoginUrl = await LearnerDashboardApiService.instance
-        .fetchWebviewLoginUrl(targetUrl: targetUrl);
-
-    if (!mounted) {
+    if (_isOpeningStudentDashboard) {
       return;
     }
+    setState(() {
+      _isOpeningStudentDashboard = true;
+    });
+    try {
+      final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
+      final webviewLoginUrl = await LearnerDashboardApiService.instance
+          .fetchWebviewLoginUrl(targetUrl: targetUrl);
 
-    if (webviewLoginUrl == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open this area securely. Please try again.'),
+      if (!mounted) {
+        return;
+      }
+
+      if (webviewLoginUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not open this area securely. Please try again.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              WebViewContentScreen(title: title, url: webviewLoginUrl),
         ),
       );
-      return;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isOpeningStudentDashboard = false;
+        });
+      }
     }
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => WebViewContentScreen(title: title, url: webviewLoginUrl),
-      ),
-    );
   }
 
   @override
@@ -162,47 +186,54 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       return tab;
     });
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F8FF),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: tabs,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.lightGreen,
-        unselectedItemColor: Colors.blueGrey.shade300,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined, size: 28),
-            activeIcon: Icon(Icons.home_rounded, size: 28),
-            label: 'Home',
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: const Color(0xFFF0F8FF),
+          body: IndexedStack(index: _selectedIndex, children: tabs),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: AppColors.lightGreen,
+            unselectedItemColor: Colors.blueGrey.shade300,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined, size: 28),
+                activeIcon: Icon(Icons.home_rounded, size: 28),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.local_library_outlined, size: 28),
+                activeIcon: Icon(Icons.local_library_rounded, size: 28),
+                label: 'Library',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.bolt_outlined, size: 28),
+                activeIcon: Icon(Icons.bolt_rounded, size: 28),
+                label: 'Quest',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.menu_outlined, size: 28),
+                activeIcon: Icon(Icons.menu_rounded, size: 28),
+                label: 'Menu',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_outline_rounded, size: 28),
+                activeIcon: Icon(Icons.person_rounded, size: 28),
+                label: 'Profile',
+              ),
+            ],
           ),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.local_library_outlined, size: 28),
-            activeIcon: Icon(Icons.local_library_rounded, size: 28),
-            label: 'Library',
+        ),
+        if (_isOpeningStudentDashboard)
+          Container(
+            color: Colors.black.withOpacity(0.5),
+            child: const Center(
+              child: CircularProgressIndicator(color: AppColors.lightGreen),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bolt_outlined, size: 28),
-            activeIcon: Icon(Icons.bolt_rounded, size: 28),
-            label: 'Quest',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_outlined, size: 28),
-            activeIcon: Icon(Icons.menu_rounded, size: 28),
-            label: 'Menu',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline_rounded, size: 28),
-            activeIcon: Icon(Icons.person_rounded, size: 28),
-            label: 'Profile',
-          ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -648,9 +679,12 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       try {
         final packageInfo = await PackageInfo.fromPlatform();
         final installer = packageInfo.installerStore;
-        if (installer != null && (installer.contains('vending') || installer.contains('google'))) {
+        if (installer != null &&
+            (installer.contains('vending') || installer.contains('google'))) {
           shouldCheckCustom = false;
-          debugPrint('App installed via Play Store. Skipping custom update check.');
+          debugPrint(
+            'App installed via Play Store. Skipping custom update check.',
+          );
         }
       } catch (e) {
         debugPrint('Could not determine installer store: $e');

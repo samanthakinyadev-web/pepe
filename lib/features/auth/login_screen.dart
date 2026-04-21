@@ -11,7 +11,6 @@ import 'package:elimupepe/core/theme/app_page_transitions.dart';
 import 'package:elimupepe/features/teacher/teacher_dashboard.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:elimupepe/features/auth/role_selection_screen.dart';
-import 'package:elimupepe/features/auth/terms_conditions_screen.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/features/parental_control/parent_dashboard.dart';
 
@@ -24,7 +23,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _studentIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
@@ -46,7 +45,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final rememberMe = prefs.getBool('remember_me') ?? false;
 
     if (rememberMe) {
-      final email = prefs.getString('saved_email') ?? '';
+      final studentId =
+          prefs.getString('saved_student_id') ?? prefs.getString('saved_email') ?? '';
 
       // Try reading from secure storage first
       String? password = await _secureStorage.read(key: 'saved_password');
@@ -62,8 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       if (mounted) {
-        _emailController.text = email;
-        _passwordController.text = password ?? '';
+        _studentIdController.text = studentId.toUpperCase();
+        _passwordController.text = password;
         setState(() => _rememberMe = rememberMe);
       }
     }
@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _studentIdController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -99,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final loginResult = await AuthService.instance.login(
-        email: _emailController.text,
+        studentId: _studentIdController.text,
         password: _passwordController.text,
       );
 
@@ -124,7 +124,11 @@ class _LoginScreenState extends State<LoginScreen> {
       final prefs = await SharedPreferences.getInstance();
       if (_rememberMe) {
         await prefs.setBool('remember_me', true);
-        await prefs.setString('saved_email', _emailController.text.trim());
+        await prefs.setString(
+          'saved_student_id',
+          _studentIdController.text.trim().toUpperCase(),
+        );
+        await prefs.remove('saved_email');
         // Securely store the password
         await _secureStorage.write(
           key: 'saved_password',
@@ -134,21 +138,21 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.remove('saved_password');
       } else {
         await prefs.remove('remember_me');
+        await prefs.remove('saved_student_id');
         await prefs.remove('saved_email');
         await _secureStorage.delete(key: 'saved_password');
         await prefs.remove('saved_password');
       }
 
-      // Save basic dynamic info for the profile screen to read
-      final emailPrefix = _emailController.text.split('@').first;
-      final capitalizedName = emailPrefix.isNotEmpty
-          ? emailPrefix[0].toUpperCase() + emailPrefix.substring(1)
+      final normalizedStudentId = _studentIdController.text.trim().toUpperCase();
+      final fallbackName = normalizedStudentId.isNotEmpty
+          ? normalizedStudentId
           : 'Student';
-      await prefs.setString('user_name', capitalizedName);
-      await prefs.setString('user_email', _emailController.text);
+      await prefs.setString('user_name', loginResult.name ?? fallbackName);
+      await prefs.setString('user_email', '');
       await prefs.setString(
         'loho_id',
-        'LOHO-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+        (loginResult.studentId ?? normalizedStudentId).toUpperCase(),
       );
 
       if (mounted) {
@@ -281,14 +285,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                 children: [
                                   ElimuTextField(
                                     icon: Icons.person_outline_rounded,
-                                    label: 'Email or student ID',
-                                    hint: 'Enter your Email or Loho ID',
-                                    controller: _emailController,
-                                    keyboardType: TextInputType.emailAddress,
+                                    label: 'Student ID',
+                                    hint: 'Enter your Student ID (LO-XXXXXXXX)',
+                                    controller: _studentIdController,
+                                    keyboardType: TextInputType.text,
                                     validator: (value) {
-                                      final text = value?.trim() ?? '';
+                                      final text = (value ?? '')
+                                          .trim()
+                                          .toUpperCase();
                                       if (text.isEmpty) {
-                                        return 'Please enter your Email or Loho ID';
+                                        return 'Please enter your Student ID';
+                                      }
+                                      if (text.contains('@')) {
+                                        return 'Email login is not supported. Use your Student ID.';
+                                      }
+                                      final isValid = RegExp(
+                                        r'^LO-[A-Z0-9]{8}$',
+                                        caseSensitive: false,
+                                      ).hasMatch(text);
+                                      if (!isValid) {
+                                        return 'Invalid Student ID format. Expected: LO-XXXXXXXX';
                                       }
                                       return null;
                                     },
