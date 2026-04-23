@@ -312,9 +312,9 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                           Expanded(
                             child: Text(
                               'You need a Safaricom line to subscribe\n\n'
-                              '1️⃣ Choose a plan on the website\n'
+                              '1️⃣ Visit our website to view available plans  \n'
                               '2️⃣ Confirm payment via M-Pesa\n'
-                              '3️⃣ Start learning 🎉\n\n'
+                              '3️⃣ Then log in and continue learning 🎉\n\n'
                               '✅ Quick and easy!',
                               textAlign: TextAlign.left,
                               style: Theme.of(context).textTheme.bodySmall

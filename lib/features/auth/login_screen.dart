@@ -46,7 +46,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (rememberMe) {
       final studentId =
-          prefs.getString('saved_student_id') ?? prefs.getString('saved_email') ?? '';
+          prefs.getString('saved_student_id') ??
+          prefs.getString('saved_email') ??
+          '';
 
       // Try reading from secure storage first
       String? password = await _secureStorage.read(key: 'saved_password');
@@ -144,7 +146,9 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.remove('saved_password');
       }
 
-      final normalizedStudentId = _studentIdController.text.trim().toUpperCase();
+      final normalizedStudentId = _studentIdController.text
+          .trim()
+          .toUpperCase();
       final fallbackName = normalizedStudentId.isNotEmpty
           ? normalizedStudentId
           : 'Student';
@@ -366,7 +370,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             .slideY(begin: 0.2),
                         const SizedBox(height: 32),
                         Text(
-                          'No account yet? dial *544*14#',
+                          'No account yet? go back to select your role and register.',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 14,
