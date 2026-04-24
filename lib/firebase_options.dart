@@ -41,48 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCLj8x17K5_j3tqNK2mY4vXRPw-WASBcdo',
-    appId: '1:835456013103:web:ce5addee44a8550aa207da',
-    messagingSenderId: '835456013103',
-    projectId: 'elimupepe-4ce6f',
-    authDomain: 'elimupepe-4ce6f.firebaseapp.com',
-    storageBucket: 'elimupepe-4ce6f.firebasestorage.app',
-    measurementId: 'G-P9336EE022',
+    apiKey: 'AIzaSyDiL6CQY6DE0v-BfwdaFDxRViwlxMUJlA0',
+    appId: '1:773709142122:web:df9d92a0254e5754709213',
+    messagingSenderId: '773709142122',
+    projectId: 'elimupepe-8acc4',
+    authDomain: 'elimupepe-8acc4.firebaseapp.com',
+    storageBucket: 'elimupepe-8acc4.firebasestorage.app',
+    measurementId: 'G-VJP2X8X6FX',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBkgGuEYtpwQ10DFmWgrxPVb74Mpl3qfyc',
-    appId: '1:835456013103:android:f78a9b95c51dafb3a207da',
-    messagingSenderId: '835456013103',
-    projectId: 'elimupepe-4ce6f',
-    storageBucket: 'elimupepe-4ce6f.firebasestorage.app',
+    apiKey: 'AIzaSyCPs6o82d81V3XLdZSKN8nb2_5X2-VHbuY',
+    appId: '1:773709142122:android:8f2d3369dad50cbb709213',
+    messagingSenderId: '773709142122',
+    projectId: 'elimupepe-8acc4',
+    storageBucket: 'elimupepe-8acc4.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyAEeznemkbzoWovGvr33DdYOdkEHd_0-zM',
-    appId: '1:835456013103:ios:a41f1bdf93c4702aa207da',
-    messagingSenderId: '835456013103',
-    projectId: 'elimupepe-4ce6f',
-    storageBucket: 'elimupepe-4ce6f.firebasestorage.app',
+    apiKey: 'AIzaSyBiZDPCTHJ8VlhJQjRHpCYIK3r0FxXbWcM',
+    appId: '1:773709142122:ios:f4aa0a082a5d73ba709213',
+    messagingSenderId: '773709142122',
+    projectId: 'elimupepe-8acc4',
+    storageBucket: 'elimupepe-8acc4.firebasestorage.app',
     iosBundleId: 'com.loho.elimupepe',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyAEeznemkbzoWovGvr33DdYOdkEHd_0-zM',
-    appId: '1:835456013103:ios:a41f1bdf93c4702aa207da',
-    messagingSenderId: '835456013103',
-    projectId: 'elimupepe-4ce6f',
-    storageBucket: 'elimupepe-4ce6f.firebasestorage.app',
+    apiKey: 'AIzaSyBiZDPCTHJ8VlhJQjRHpCYIK3r0FxXbWcM',
+    appId: '1:773709142122:ios:f4aa0a082a5d73ba709213',
+    messagingSenderId: '773709142122',
+    projectId: 'elimupepe-8acc4',
+    storageBucket: 'elimupepe-8acc4.firebasestorage.app',
     iosBundleId: 'com.loho.elimupepe',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCLj8x17K5_j3tqNK2mY4vXRPw-WASBcdo',
-    appId: '1:835456013103:web:684ae2e60f71c55aa207da',
-    messagingSenderId: '835456013103',
-    projectId: 'elimupepe-4ce6f',
-    authDomain: 'elimupepe-4ce6f.firebaseapp.com',
-    storageBucket: 'elimupepe-4ce6f.firebasestorage.app',
-    measurementId: 'G-Y25NGYTNF5',
+    apiKey: 'AIzaSyDiL6CQY6DE0v-BfwdaFDxRViwlxMUJlA0',
+    appId: '1:773709142122:web:405c5f6ce9087c4b709213',
+    messagingSenderId: '773709142122',
+    projectId: 'elimupepe-8acc4',
+    authDomain: 'elimupepe-8acc4.firebaseapp.com',
+    storageBucket: 'elimupepe-8acc4.firebasestorage.app',
+    measurementId: 'G-G12BZWC272',
   );
+
 }

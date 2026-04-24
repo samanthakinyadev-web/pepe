@@ -49,8 +49,9 @@ class AppPageTransitions {
     );
   }
 
-  static Route<T> route<T>(Widget page) {
+  static Route<T> route<T>(Widget page, {String? name}) {
     return PageRouteBuilder<T>(
+      settings: RouteSettings(name: name ?? page.runtimeType.toString()),
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionDuration: duration,
       reverseTransitionDuration: reverseDuration,

@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "835456013103",
-    "project_id": "elimupepe-4ce6f",
-    "storage_bucket": "elimupepe-4ce6f.firebasestorage.app"
+    "project_number": "773709142122",
+    "project_id": "elimupepe-8acc4",
+    "storage_bucket": "elimupepe-8acc4.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:835456013103:android:f78a9b95c51dafb3a207da",
+        "mobilesdk_app_id": "1:773709142122:android:8f2d3369dad50cbb709213",
         "android_client_info": {
           "package_name": "com.loho.elimupepe"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBkgGuEYtpwQ10DFmWgrxPVb74Mpl3qfyc"
+          "current_key": "AIzaSyCPs6o82d81V3XLdZSKN8nb2_5X2-VHbuY"
         }
       ],
       "services": {

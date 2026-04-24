@@ -22,6 +22,18 @@ Implemented:
 - Sqflite for local metadata storage
 - Pdfx for PDF viewing
 - WebView Flutter for in-app content launch
+- Firebase (Core, Firestore, Analytics)
+
+## Firebase Analytics
+
+- Screen views: tracked via `FirebaseAnalyticsObserver` for routes that have a `RouteSettings.name` (routes created with `AppPageTransitions.route()` now get an automatic name).
+- Login events: `login_attempt`, `login_failed`, `login_terms_not_agreed`, `login_error`, plus the standard Firebase `login` event on success.
+
+Android DebugView (optional):
+
+```bash
+adb shell setprop debug.firebase.analytics.app com.loho.elimupepe
+```
 
 ## API Integration
 

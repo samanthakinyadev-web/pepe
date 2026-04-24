@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/theme/wave_clipper.dart';
 import 'package:elimupepe/core/widgets/elimu_button.dart';
 import 'package:elimupepe/core/services/auth_service.dart';
+import 'package:elimupepe/core/services/analytics_service.dart';
+import 'package:elimupepe/core/theme/app_page_transitions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/core/widgets/elimu_text_field.dart';
 import 'package:elimupepe/features/home/dashboard_screen.dart';
@@ -80,6 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (!_hasAgreed) {
+      AnalyticsService.instance.logEvent('login_terms_not_agreed');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -95,6 +98,11 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      AnalyticsService.instance.logEvent(
+        'login_attempt',
+        parameters: {'remember_me': _rememberMe ? 1 : 0},
+      );
+
       final loginResult = await AuthService.instance.login(
         studentId: _studentIdController.text,
         password: _passwordController.text,
@@ -109,6 +117,13 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       if (!loginResult.success) {
+        final reason = loginResult.message.trim();
+        AnalyticsService.instance.logEvent(
+          'login_failed',
+          parameters: {
+            'reason': reason.length > 80 ? reason.substring(0, 80) : reason,
+          },
+        );
         if (mounted) {
           ScaffoldMessenger.of(
             context,
@@ -141,6 +156,8 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.remove('saved_password');
       }
 
+      await AnalyticsService.instance.logLogin(method: 'student_id');
+
       final normalizedStudentId = _studentIdController.text
           .trim()
           .toUpperCase();
@@ -156,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => _routeForRole(loginResult)),
+          AppPageTransitions.route(_routeForRole(loginResult)),
         );
       }
     } catch (e) {
@@ -167,6 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Login error: $e')));
+      AnalyticsService.instance.logEvent('login_error');
     }
   }
 
@@ -191,8 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final shortestSide = screenSize.shortestSide;
     final isTablet = shortestSide >= 600;
     final isWideLayout =
-        screenSize.width >= 900 ||
-        (screenSize.width / screenSize.height) > 1.15;
+        screenSize.width >= 900 || (screenSize.width / screenSize.height) > 1.15;
     final headerImageFit = isWideLayout ? BoxFit.contain : BoxFit.cover;
 
     // ADJUSTABLE RATIOS:
@@ -228,21 +245,20 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Container(
                 height: headerHeight,
                 decoration: const BoxDecoration(color: Colors.white),
-                child:
-                    Image.asset(
-                          'assets/images/fam.png',
-                          fit: headerImageFit,
-                          alignment: Alignment.topCenter,
-                          filterQuality: FilterQuality.high,
-                        )
-                        .animate()
-                        .fadeIn(duration: 800.ms)
-                        .scale(
-                          begin: isWideLayout
-                              ? const Offset(1.0, 1.0)
-                              : const Offset(1.1, 1.1),
-                          duration: 1000.ms,
-                        ),
+                child: Image.asset(
+                  'assets/images/fam.png',
+                  fit: headerImageFit,
+                  alignment: Alignment.bottomCenter,
+                  filterQuality: FilterQuality.high,
+                )
+                    .animate()
+                    .fadeIn(duration: 800.ms)
+                    .scale(
+                      begin: isWideLayout
+                          ? const Offset(1.0, 1.0)
+                          : const Offset(1.1, 1.1),
+                      duration: 1000.ms,
+                    ),
               ),
             ),
           ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:elimupepe/firebase_options.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:elimupepe/core/services/analytics_service.dart';
 import 'package:elimupepe/features/auth/auth_gate.dart';
 import 'package:elimupepe/core/theme/app_page_transitions.dart';
 
@@ -32,6 +33,8 @@ class SecureElimupepeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final analyticsObserver = AnalyticsService.instance.navigatorObserver;
+
     return MaterialApp(
       title: 'Elimu Pepe',
       debugShowCheckedModeBanner: false,
@@ -49,6 +52,9 @@ class SecureElimupepeApp extends StatelessWidget {
           foregroundColor: AppColors.textLight,
         ),
       ),
+      navigatorObservers: [
+        if (analyticsObserver != null) analyticsObserver,
+      ],
       home: const AuthGate(),
     );
   }
