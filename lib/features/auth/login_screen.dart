@@ -7,10 +7,8 @@ import 'package:elimupepe/core/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/core/widgets/elimu_text_field.dart';
 import 'package:elimupepe/features/home/dashboard_screen.dart';
-import 'package:elimupepe/core/theme/app_page_transitions.dart';
 import 'package:elimupepe/features/teacher/teacher_dashboard.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:elimupepe/features/auth/role_selection_screen.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/features/parental_control/parent_dashboard.dart';
 
@@ -45,10 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final rememberMe = prefs.getBool('remember_me') ?? false;
 
     if (rememberMe) {
-      final studentId =
-          prefs.getString('saved_student_id') ??
-          prefs.getString('saved_email') ??
-          '';
+      final studentId = prefs.getString('saved_student_id') ?? '';
 
       // Try reading from secure storage first
       String? password = await _secureStorage.read(key: 'saved_password');
@@ -195,6 +190,15 @@ class _LoginScreenState extends State<LoginScreen> {
     final screenSize = MediaQuery.of(context).size;
     final shortestSide = screenSize.shortestSide;
     final isTablet = shortestSide >= 600;
+    final isWideLayout =
+        screenSize.width >= 900 ||
+        (screenSize.width / screenSize.height) > 1.15;
+    final headerImageFit = isWideLayout ? BoxFit.contain : BoxFit.cover;
+
+    // ADJUSTABLE RATIOS:
+    // Header takes 35-40% of height, content starts slightly above the wave's bottom.
+    final headerHeight = screenSize.height * (isTablet ? 0.35 : 0.40);
+    final contentTopPadding = headerHeight * 0.85;
 
     return Scaffold(
       backgroundColor: _softBackground,
@@ -222,12 +226,23 @@ class _LoginScreenState extends State<LoginScreen> {
             child: ClipPath(
               clipper: WaveClipper(),
               child: Container(
-                height: isTablet ? 350 : 280,
+                height: headerHeight,
                 decoration: const BoxDecoration(color: Colors.white),
-                child: Image.asset('assets/images/fam.png', fit: BoxFit.cover)
-                    .animate()
-                    .fadeIn(duration: 800.ms)
-                    .scale(begin: const Offset(1.1, 1.1), duration: 1000.ms),
+                child:
+                    Image.asset(
+                          'assets/images/fam.png',
+                          fit: headerImageFit,
+                          alignment: Alignment.topCenter,
+                          filterQuality: FilterQuality.high,
+                        )
+                        .animate()
+                        .fadeIn(duration: 800.ms)
+                        .scale(
+                          begin: isWideLayout
+                              ? const Offset(1.0, 1.0)
+                              : const Offset(1.1, 1.1),
+                          duration: 1000.ms,
+                        ),
               ),
             ),
           ),
@@ -236,155 +251,144 @@ class _LoginScreenState extends State<LoginScreen> {
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
+                final double maxWidth = isTablet ? 500 : double.infinity;
+
                 return SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Spacer for the header image
-                        SizedBox(height: isTablet ? 320 : 250),
+                  child: Center(
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: maxWidth,
+                        minHeight: constraints.maxHeight,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Spacer for the header image
+                          SizedBox(height: contentTopPadding),
 
-                        const SizedBox(height: 12),
-                        const Text(
-                              'Welcome Back!',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                shadows: [
-                                  Shadow(
-                                    color: Colors.black26,
-                                    offset: Offset(0, 2),
-                                    blurRadius: 4,
-                                  ),
-                                ],
-                              ),
-                              textAlign: TextAlign.center,
-                            )
-                            .animate()
-                            .fadeIn(delay: 400.ms, duration: 600.ms)
-                            .slideY(begin: 0.2),
-                        const SizedBox(height: 8),
-                        Text(
-                              'Enter your details to continue.',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 16,
-                              ),
-                              textAlign: TextAlign.center,
-                            )
-                            .animate()
-                            .fadeIn(delay: 500.ms, duration: 600.ms)
-                            .slideY(begin: 0.2),
-                        const SizedBox(height: 24),
-
-                        Form(
-                              key: _formKey,
-                              child: Column(
-                                children: [
-                                  ElimuTextField(
-                                    icon: Icons.person_outline_rounded,
-                                    label: 'Student ID',
-                                    hint: 'Enter your Student ID (LO-XXXXXXXX)',
-                                    controller: _studentIdController,
-                                    keyboardType: TextInputType.text,
-                                    validator: (value) {
-                                      final text = (value ?? '')
-                                          .trim()
-                                          .toUpperCase();
-                                      if (text.isEmpty) {
-                                        return 'Please enter your Student ID';
-                                      }
-                                      if (text.contains('@')) {
-                                        return 'Email login is not supported. Use your Student ID.';
-                                      }
-                                      final isValid = RegExp(
-                                        r'^LO-[A-Z0-9]{8}$',
-                                        caseSensitive: false,
-                                      ).hasMatch(text);
-                                      if (!isValid) {
-                                        return 'Invalid Student ID format. Expected: LO-XXXXXXXX';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 14),
-                                  ElimuTextField(
-                                    icon: Icons.lock_outline,
-                                    label: 'Password',
-                                    hint: 'Enter your password',
-                                    controller: _passwordController,
-                                    isPassword: true,
-                                    validator: (value) {
-                                      if ((value ?? '').isEmpty) {
-                                        return 'Password is required';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                ],
-                              ),
-                            )
-                            .animate()
-                            .fadeIn(delay: 600.ms, duration: 600.ms)
-                            .slideY(begin: 0.2),
-                        const SizedBox(height: 12),
-                        _buildRememberMeRow(),
-                        const SizedBox(height: 12),
-                        _buildAgreementRow(),
-                        const SizedBox(height: 12),
-                        ElimuButton(
-                              text: 'Login',
-                              isLoading: _isLoading,
-                              onPressed: _handleLogin,
-                            )
-                            .animate()
-                            .fadeIn(delay: 800.ms, duration: 600.ms)
-                            .slideY(begin: 0.2),
-                        const SizedBox(height: 10),
-                        TextButton(
-                              onPressed: _isLoading
-                                  ? null
-                                  : () {
-                                      Navigator.of(context).pushReplacement(
-                                        AppPageTransitions.route(
-                                          const RoleSelectionScreen(),
-                                        ),
-                                      );
-                                    },
-                              child: const Text(
-                                'Back to role selection',
+                          const SizedBox(height: 12),
+                          const Text(
+                                'Welcome Back!',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w700,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black26,
+                                      offset: Offset(0, 2),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            )
-                            .animate()
-                            .fadeIn(delay: 850.ms, duration: 600.ms)
-                            .slideY(begin: 0.2),
-                        const SizedBox(height: 32),
-                        Text(
-                          'No account yet? go back to select your role and register.',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ).animate().fadeIn(delay: 900.ms, duration: 600.ms),
-                        const SizedBox(height: 48),
-                      ],
+                                textAlign: TextAlign.center,
+                              )
+                              .animate()
+                              .fadeIn(delay: 400.ms, duration: 600.ms)
+                              .slideY(begin: 0.2),
+                          const SizedBox(height: 8),
+                          Text(
+                                'Enter your details to continue.',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontSize: 16,
+                                ),
+                                textAlign: TextAlign.center,
+                              )
+                              .animate()
+                              .fadeIn(delay: 500.ms, duration: 600.ms)
+                              .slideY(begin: 0.2),
+                          const SizedBox(height: 24),
+
+                          Form(
+                                key: _formKey,
+                                child: Column(
+                                  children: [
+                                    ElimuTextField(
+                                      icon: Icons.person_outline_rounded,
+                                      label: 'Student ID',
+                                      hint:
+                                          'Enter your Student ID (LO-XXXXXXXX)',
+                                      controller: _studentIdController,
+                                      keyboardType: TextInputType.text,
+                                      validator: (value) {
+                                        final text = (value ?? '')
+                                            .trim()
+                                            .toUpperCase();
+                                        if (text.isEmpty) {
+                                          return 'Please enter your Student ID';
+                                        }
+                                        if (text.contains('@')) {
+                                          return 'Email login is not supported. Use your Student ID.';
+                                        }
+                                        final isValid = RegExp(
+                                          r'^LO-[A-Z0-9]{8}$',
+                                          caseSensitive: false,
+                                        ).hasMatch(text);
+                                        if (!isValid) {
+                                          return 'Invalid Student ID format. Expected: LO-XXXXXXXX';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 14),
+                                    ElimuTextField(
+                                      icon: Icons.lock_outline,
+                                      label: 'Password',
+                                      hint: 'Enter your password',
+                                      controller: _passwordController,
+                                      isPassword: true,
+                                      validator: (value) {
+                                        if ((value ?? '').isEmpty) {
+                                          return 'Password is required';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              )
+                              .animate()
+                              .fadeIn(delay: 600.ms, duration: 600.ms)
+                              .slideY(begin: 0.2),
+                          const SizedBox(height: 12),
+                          _buildRememberMeRow(),
+                          const SizedBox(height: 12),
+                          _buildAgreementRow(),
+                          const SizedBox(height: 24),
+                          Text(
+                            'No account yet? Ask your parent/teacher to create one for you .',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ).animate().fadeIn(delay: 900.ms, duration: 600.ms),
+                          const SizedBox(height: 12),
+                          ElimuButton(
+                                text: 'Login',
+                                isLoading: _isLoading,
+                                onPressed: _handleLogin,
+                              )
+                              .animate()
+                              .fadeIn(delay: 800.ms, duration: 600.ms)
+                              .slideY(begin: 0.2),
+                          const SizedBox(height: 48),
+                        ],
+                      ),
                     ),
                   ),
                 );
               },
             ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top,
+            left: 4,
+            child: const BackButton(color: Colors.white),
           ),
         ],
       ),
@@ -393,7 +397,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildRememberMeRow() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         GestureDetector(
           onTap: () => setState(() => _rememberMe = !_rememberMe),
@@ -418,6 +421,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
               const Text(
                 'Remember Me',
                 style: TextStyle(
@@ -426,23 +430,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ],
-          ),
-        ),
-        TextButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please contact admin for password reset.'),
-              ),
-            );
-          },
-          child: const Text(
-            '',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
           ),
         ),
       ],
