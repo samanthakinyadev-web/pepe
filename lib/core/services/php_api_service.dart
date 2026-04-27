@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:elimupepe/models/ebook.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:elimupepe/core/utils/image_url_resolver.dart';
 
 class PhpApiService {
@@ -8,7 +9,7 @@ class PhpApiService {
   PhpApiService._internal();
 
   final Dio _dio = Dio();
-  static const String _baseUrl = 'https://api-ebooks.loholearning.co.ke';
+  static const String _baseUrl = AppEndpoints.ebooksApiBaseUrl;
 
   Ebook _mapBook(Map<String, dynamic> json) {
     String? rawCover = json['cover_url'] ?? json['coverUrl'];

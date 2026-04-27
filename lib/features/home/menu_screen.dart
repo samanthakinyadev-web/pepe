@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:elimupepe/models/menu_item.dart';
+import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:elimupepe/features/home/category_items_screen.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
@@ -15,7 +16,7 @@ class MenuScreen extends StatelessWidget {
 
     final intendedPath = MenuItem.directIntendedPathFor(item.id);
     if (intendedPath != null) {
-      final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
+      final targetUrl = '${AppEndpoints.webBaseUrl}$intendedPath';
       final webviewLoginUrl = await LearnerDashboardApiService.instance
           .fetchWebviewLoginUrl(targetUrl: targetUrl);
 

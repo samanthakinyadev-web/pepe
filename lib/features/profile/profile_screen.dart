@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:elimupepe/core/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/features/auth/welcome_screen.dart';
 import 'package:elimupepe/core/utils/image_url_resolver.dart';
 import 'package:elimupepe/features/settings/about_screen.dart';
 import 'package:elimupepe/core/services/user_data_service.dart';
 import 'package:elimupepe/features/settings/notifications_screen.dart';
 import 'package:elimupepe/features/parental_control/parental_gate.dart';
-import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
+import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -37,7 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required String intendedPath,
   }) async {
-    final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
+    final targetUrl = '${AppEndpoints.webBaseUrl}$intendedPath';
     final webviewLoginUrl = await LearnerDashboardApiService.instance
         .fetchWebviewLoginUrl(targetUrl: targetUrl);
 

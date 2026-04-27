@@ -1,5 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:elimupepe/models/ebook.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:elimupepe/core/utils/image_url_resolver.dart';
 
 /// Service to interact with Firebase Firestore for cloud book management
@@ -10,8 +11,7 @@ class FirestoreService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String _booksCollection = 'books';
-  static const String _booksImageBaseUrl =
-      'https://api-ebooks.loholearning.co.ke';
+  static const String _booksImageBaseUrl = AppEndpoints.ebooksApiBaseUrl;
 
   /// Get all books from Firestore
   Future<List<Ebook>> getCloudBooks() async {

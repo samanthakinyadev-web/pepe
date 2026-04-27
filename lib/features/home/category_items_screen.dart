@@ -3,6 +3,7 @@ import 'package:elimupepe/models/menu_item.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:elimupepe/core/widgets/elimu_card.dart';
 import 'package:elimupepe/core/widgets/elimu_button.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:elimupepe/core/utils/image_url_resolver.dart';
 import 'package:elimupepe/features/quiz/quiz_session_screen.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
@@ -459,7 +460,7 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
     }
 
     if (trimmed.startsWith('/')) {
-      final uri = Uri.tryParse('https://elimupepe.loholearning.co.ke$trimmed');
+      final uri = Uri.tryParse('${AppEndpoints.webBaseUrl}$trimmed');
       return uri?.toString();
     }
 

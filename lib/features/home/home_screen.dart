@@ -1,5 +1,5 @@
-import 'dart:async';
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:elimupepe/models/ebook.dart';
@@ -8,6 +8,7 @@ import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/widgets/elimu_card.dart';
 import 'package:elimupepe/core/widgets/elimu_button.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/features/reader/reader_screen.dart';
 import 'package:elimupepe/core/services/storage_service.dart';
@@ -15,6 +16,7 @@ import 'package:elimupepe/core/services/php_api_service.dart';
 import 'package:elimupepe/core/widgets/category_nav_bar.dart';
 import 'package:elimupepe/core/utils/image_url_resolver.dart';
 import 'package:elimupepe/core/services/database_service.dart';
+import 'package:elimupepe/core/services/analytics_service.dart';
 import 'package:elimupepe/core/services/thumbnail_service.dart';
 import 'package:elimupepe/core/services/user_data_service.dart';
 import 'package:elimupepe/features/settings/settings_screen.dart';
@@ -34,8 +36,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
-  static const String _booksImageBaseUrl =
-      'https://api-ebooks.loholearning.co.ke';
+  static const String _booksImageBaseUrl = AppEndpoints.ebooksApiBaseUrl;
   final DatabaseService _databaseService = DatabaseService.instance;
   final StorageService _storageService = StorageService.instance;
   final PhpApiService _apiService = PhpApiService.instance;
@@ -460,6 +461,13 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _downloadBook(Ebook cloudBook) async {
     // Create a ValueNotifier for this book's progress
     final progressNotifier = ValueNotifier<double>(0.0);
+
+    // Log download start
+    AnalyticsService.instance.logEvent(
+      'book_download_start',
+      parameters: {'book_id': cloudBook.id, 'book_title': cloudBook.title},
+    );
+
     if (mounted) {
       setState(() {
         _downloadProgress[cloudBook.id] = progressNotifier;
@@ -483,6 +491,18 @@ class _HomeScreenState extends State<HomeScreen>
         });
 
         if (success) {
+          // Log successful download with metadata
+          AnalyticsService.instance.logEvent(
+            'book_download_success',
+            parameters: {
+              'book_id': cloudBook.id,
+              'book_title': cloudBook.title,
+              'book_author': cloudBook.author,
+              'book_grade': cloudBook.grade,
+              'book_category': cloudBook.category,
+            },
+          );
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('✅ Downloaded: ${cloudBook.title}'),
@@ -494,6 +514,13 @@ class _HomeScreenState extends State<HomeScreen>
           _loadEbooks();
           _loadCloudBooks();
         } else {
+          AnalyticsService.instance.logEvent(
+            'book_download_failed',
+            parameters: {
+              'book_id': cloudBook.id,
+              'book_title': cloudBook.title,
+            },
+          );
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -507,6 +534,15 @@ class _HomeScreenState extends State<HomeScreen>
       }
     } catch (e) {
       if (mounted) {
+        AnalyticsService.instance.logEvent(
+          'book_download_error',
+          parameters: {
+            'book_id': cloudBook.id,
+            'error': e.toString().length > 100
+                ? e.toString().substring(0, 100)
+                : e.toString(),
+          },
+        );
         setState(() {
           _downloadProgress.remove(cloudBook.id);
         });
@@ -552,7 +588,7 @@ class _HomeScreenState extends State<HomeScreen>
     required String title,
     required String intendedPath,
   }) async {
-    final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
+    final targetUrl = '${AppEndpoints.webBaseUrl}$intendedPath';
     final webviewLoginUrl = await LearnerDashboardApiService.instance
         .fetchWebviewLoginUrl(targetUrl: targetUrl);
 
@@ -1089,9 +1125,7 @@ class _HomeScreenState extends State<HomeScreen>
         physics: const AlwaysScrollableScrollPhysics(),
         children: const [
           SizedBox(height: 140),
-          Center(
-            child: CircularProgressIndicator(color: AppColors.lightGreen),
-          ),
+          Center(child: CircularProgressIndicator(color: AppColors.lightGreen)),
         ],
       );
     }
@@ -1257,10 +1291,7 @@ class _HomeScreenState extends State<HomeScreen>
     return normalized;
   }
 
-  Widget _buildBookGrid(
-    List<Ebook> books, {
-    required String emptyMessage,
-  }) {
+  Widget _buildBookGrid(List<Ebook> books, {required String emptyMessage}) {
     if (books.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),

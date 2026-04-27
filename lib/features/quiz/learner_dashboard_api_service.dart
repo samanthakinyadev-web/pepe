@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:elimupepe/core/services/auth_service.dart';
 import 'package:elimupepe/core/services/user_data_service.dart';
 
@@ -25,8 +26,8 @@ class LearnerDashboardApiService {
     );
   }
 
-  static const String _baseUrl = 'https://elimupepe.loholearning.co.ke/api';
-  static const String _webHost = 'https://elimupepe.loholearning.co.ke';
+  static const String _baseUrl = AppEndpoints.apiBaseUrl;
+  static const String _webHost = AppEndpoints.webBaseUrl;
 
   final Dio _dio = Dio(
     BaseOptions(
@@ -448,7 +449,7 @@ class LearnerDashboardApiService {
     }
 
     final host = parsed.host.toLowerCase();
-    if (host != 'elimupepe.loholearning.co.ke') {
+    if (host != AppEndpoints.primaryHost) {
       return null;
     }
 

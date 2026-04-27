@@ -1,5 +1,7 @@
+import 'package:elimupepe/core/config/app_endpoints.dart';
+
 class ImageUrlResolver {
-  static const String _defaultBaseUrl = 'https://elimupepe.loholearning.co.ke';
+  static const String _defaultBaseUrl = AppEndpoints.webBaseUrl;
 
   static const List<String> _imageKeys = [
     'avatar',
@@ -112,7 +114,9 @@ class ImageUrlResolver {
 
     // 6. Handle relative paths
     if (value.contains('/')) {
-      final cleanBase = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+      final cleanBase = baseUrl.endsWith('/')
+          ? baseUrl.substring(0, baseUrl.length - 1)
+          : baseUrl;
       final cleanValue = value.startsWith('/') ? value.substring(1) : value;
       return Uri.encodeFull('$cleanBase/$cleanValue');
     }

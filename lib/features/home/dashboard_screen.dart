@@ -7,6 +7,7 @@ import 'package:in_app_update/in_app_update.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/widgets/elimu_card.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:elimupepe/features/home/home_screen.dart';
 import 'package:elimupepe/features/home/menu_screen.dart';
@@ -87,8 +88,7 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       _isOpeningStudentDashboard = true;
     });
     try {
-      final targetUrl =
-          'https://elimupepe.loholearning.co.ke/student-dashboard';
+      final targetUrl = '${AppEndpoints.webBaseUrl}/student-dashboard';
       final webviewLoginUrl = await LearnerDashboardApiService.instance
           .fetchWebviewLoginUrl(targetUrl: targetUrl);
 
@@ -135,7 +135,7 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       _isOpeningStudentDashboard = true;
     });
     try {
-      final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
+      final targetUrl = '${AppEndpoints.webBaseUrl}$intendedPath';
       final webviewLoginUrl = await LearnerDashboardApiService.instance
           .fetchWebviewLoginUrl(targetUrl: targetUrl);
 
@@ -698,7 +698,7 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
 
         final dio = Dio();
         final response = await dio.get(
-          'https://elimupepe.loholearning.co.ke/api/v1/app/version',
+          '${AppEndpoints.apiBaseUrl}/v1/app/version',
         );
 
         if (response.statusCode == 200 && response.data != null) {
@@ -712,10 +712,15 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
               'A new version is available with bug fixes and improvements.';
 
           if (latestBuildNumber > currentBuildNumber &&
-              downloadUrl.isNotEmpty) {
+              downloadUrl.isNotEmpty &&
+              _isValidUpdateUrl(downloadUrl)) {
             if (mounted) {
               _showUpdateDialog(downloadUrl, releaseNotes, isMandatory);
             }
+          } else if (latestBuildNumber > currentBuildNumber) {
+            debugPrint(
+              'Update available but download URL is invalid or insecure: $downloadUrl',
+            );
           }
         }
       } catch (e) {
@@ -771,7 +776,19 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
                   final passed = await showParentalGate(context);
                   if (!passed) return;
 
-                  final uri = Uri.parse(downloadUrl);
+                  final uri = Uri.tryParse(downloadUrl);
+                  if (uri == null || !_isValidUpdateUrl(downloadUrl)) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Update URL is invalid or untrusted.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                    return;
+                  }
+
                   if (await canLaunchUrl(uri)) {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   }
@@ -783,5 +800,9 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
         );
       },
     );
+  }
+
+  bool _isValidUpdateUrl(String url) {
+    return AppEndpoints.isTrustedUpdateUrl(url);
   }
 }

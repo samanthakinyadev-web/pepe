@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:elimupepe/features/auth/login_screen.dart';
 import 'package:elimupepe/core/theme/app_page_transitions.dart';
 
@@ -20,7 +21,7 @@ Future<void> _launchWhatsApp(BuildContext context) async {
 }
 
 Future<void> _launchWebsite(BuildContext context) async {
-  final Uri url = Uri.parse('https://elimupepe.loholearning.co.ke/subscribe');
+  final Uri url = Uri.parse('${AppEndpoints.webBaseUrl}/subscribe');
   if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
     if (context.mounted) {
       ScaffoldMessenger.of(

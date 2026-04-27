@@ -1,16 +1,17 @@
 import 'welcome_screen.dart';
-import '../parental_control/parental_gate.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../parental_control/parental_gate.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
-import 'package:elimupepe/core/utils/image_url_resolver.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:elimupepe/core/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:elimupepe/core/utils/image_url_resolver.dart';
 import 'package:elimupepe/features/settings/about_screen.dart';
 import 'package:elimupepe/core/services/user_data_service.dart';
 import 'package:elimupepe/features/settings/notifications_screen.dart';
-import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
+import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -37,7 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required String intendedPath,
   }) async {
-    final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
+    final targetUrl = '${AppEndpoints.webBaseUrl}$intendedPath';
     final webviewLoginUrl = await LearnerDashboardApiService.instance
         .fetchWebviewLoginUrl(targetUrl: targetUrl);
 
@@ -57,7 +58,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => WebViewContentScreen(title: title, url: webviewLoginUrl),
+        builder: (_) =>
+            WebViewContentScreen(title: title, url: webviewLoginUrl),
       ),
     );
   }
@@ -75,7 +77,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _userName = prefs.getString('user_name') ?? 'Alex Learner';
       _lohoId = prefs.getString('loho_id') ?? 'LOHO-12345';
       _grade = prefs.getString('grade') ?? 'Grade ...';
-      _profileImageUrl = ImageUrlResolver.withCacheBuster(
+      _profileImageUrl =
+          ImageUrlResolver.withCacheBuster(
             prefs.getString('profile_image_url') ?? '',
             cacheKey: prefs.getString(_avatarCacheKeyPref),
           ) ??
@@ -920,7 +923,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isUnread ? AppColors.lightGreen.withValues(alpha: 0.05) : Colors.white,
+        color: isUnread
+            ? AppColors.lightGreen.withValues(alpha: 0.05)
+            : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isUnread

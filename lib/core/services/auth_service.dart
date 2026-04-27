@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
 import 'package:elimupepe/core/services/webview_session_service.dart';
 
 class LoginResult {
@@ -26,7 +26,7 @@ class AuthService {
   factory AuthService() => instance;
   AuthService._internal();
 
-  static const String _baseUrl = 'https://elimupepe.loholearning.co.ke/api';
+  static const String _baseUrl = AppEndpoints.apiBaseUrl;
   static const String _tokenKey = 'auth_token';
   static const String _passportTokenKey = 'passport_token';
   static const String _studentIdKey = 'auth_student_id';
@@ -34,9 +34,13 @@ class AuthService {
   static const String _userIdKey = 'auth_user_id';
   static const String _roleIdKey = 'auth_role_id';
   static const String _roleNameKey = 'auth_role_name';
-  static const Set<int> _allowedRoleIds = {3};
+  static const Set<int> _allowedRoleIds = {2, 3, 7};
   static const Set<String> _allowedRoleNames = {
     'student',
+    'teacher',
+    'educator',
+    'parent',
+    'guardian',
   };
 
   final Dio _dio = Dio(
@@ -125,18 +129,12 @@ class AuthService {
       final resolvedStudentId = _extractStudentId(user) ?? normalizedStudentId;
 
       if (!_isAllowedRole(roleId: roleId, roleName: roleName)) {
-        return const LoginResult(
-          success: false,
-          message: 'Unauthorized.',
-        );
+        return const LoginResult(success: false, message: 'Unauthorized.');
       }
 
       await _secureStorage.write(key: _tokenKey, value: token);
       await _secureStorage.write(key: _passportTokenKey, value: token);
-      await _secureStorage.write(
-        key: _studentIdKey,
-        value: resolvedStudentId,
-      );
+      await _secureStorage.write(key: _studentIdKey, value: resolvedStudentId);
       await _secureStorage.write(
         key: _userIdKey,
         value: user['id']?.toString() ?? '',

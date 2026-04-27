@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
-import 'package:elimupepe/features/parental_control/parental_gate.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:elimupepe/core/config/app_endpoints.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:elimupepe/features/parental_control/parental_gate.dart';
 
 class WebViewContentScreen extends StatefulWidget {
   final String title;
@@ -19,8 +20,10 @@ class WebViewContentScreen extends StatefulWidget {
 }
 
 class _WebViewContentScreenState extends State<WebViewContentScreen> {
-  static const String _primaryHost = 'elimupepe.loholearning.co.ke';
-  static const String _secondaryHost = 'loholearning.co.ke';
+  static final List<String> _trustedHosts = [
+    AppEndpoints.primaryHost,
+    AppEndpoints.secondaryHost,
+  ];
 
   late final WebViewController _controller;
   late String _pageTitle;
@@ -54,10 +57,10 @@ class _WebViewContentScreenState extends State<WebViewContentScreen> {
           },
           onNavigationRequest: (NavigationRequest request) async {
             final uri = Uri.parse(request.url);
-            
+            final host = uri.host.toLowerCase();
+
             // Allow internal navigation without gate
-            if (uri.host.toLowerCase() == _primaryHost || 
-                uri.host.toLowerCase() == _secondaryHost) {
+            if (_trustedHosts.contains(host)) {
               return NavigationDecision.navigate;
             }
 
@@ -67,7 +70,7 @@ class _WebViewContentScreenState extends State<WebViewContentScreen> {
             if (passed) {
               return NavigationDecision.navigate;
             }
-            
+
             return NavigationDecision.prevent;
           },
         ),
@@ -94,7 +97,7 @@ class _WebViewContentScreenState extends State<WebViewContentScreen> {
   }
 
   Future<Map<String, String>> _buildHeadersForUrl(Uri uri) async {
-    if (uri.host.toLowerCase() != _primaryHost && uri.host.toLowerCase() != _secondaryHost) {
+    if (!_trustedHosts.contains(uri.host.toLowerCase())) {
       return const {};
     }
 

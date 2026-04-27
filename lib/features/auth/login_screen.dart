@@ -4,11 +4,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/theme/wave_clipper.dart';
 import 'package:elimupepe/core/widgets/elimu_button.dart';
 import 'package:elimupepe/core/services/auth_service.dart';
-import 'package:elimupepe/core/services/analytics_service.dart';
-import 'package:elimupepe/core/theme/app_page_transitions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/core/widgets/elimu_text_field.dart';
 import 'package:elimupepe/features/home/dashboard_screen.dart';
+import 'package:elimupepe/core/services/analytics_service.dart';
+import 'package:elimupepe/core/theme/app_page_transitions.dart';
 import 'package:elimupepe/features/teacher/teacher_dashboard.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
@@ -45,7 +45,14 @@ class _LoginScreenState extends State<LoginScreen> {
     final rememberMe = prefs.getBool('remember_me') ?? false;
 
     if (rememberMe) {
-      final studentId = prefs.getString('saved_student_id') ?? '';
+      String? studentId = await _secureStorage.read(key: 'saved_student_id');
+      if (studentId == null || studentId.isEmpty) {
+        studentId = prefs.getString('saved_student_id') ?? '';
+        if (studentId.isNotEmpty) {
+          await _secureStorage.write(key: 'saved_student_id', value: studentId);
+          await prefs.remove('saved_student_id');
+        }
+      }
 
       // Try reading from secure storage first
       String? password = await _secureStorage.read(key: 'saved_password');
@@ -61,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       if (mounted) {
-        _studentIdController.text = studentId.toUpperCase();
+        _studentIdController.text = studentId?.toUpperCase() ?? '';
         _passwordController.text = password;
         setState(() => _rememberMe = rememberMe);
       }
@@ -136,10 +143,11 @@ class _LoginScreenState extends State<LoginScreen> {
       final prefs = await SharedPreferences.getInstance();
       if (_rememberMe) {
         await prefs.setBool('remember_me', true);
-        await prefs.setString(
-          'saved_student_id',
-          _studentIdController.text.trim().toUpperCase(),
+        await _secureStorage.write(
+          key: 'saved_student_id',
+          value: _studentIdController.text.trim().toUpperCase(),
         );
+        await prefs.remove('saved_student_id');
         await prefs.remove('saved_email');
         // Securely store the password
         await _secureStorage.write(
@@ -152,6 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.remove('remember_me');
         await prefs.remove('saved_student_id');
         await prefs.remove('saved_email');
+        await _secureStorage.delete(key: 'saved_student_id');
         await _secureStorage.delete(key: 'saved_password');
         await prefs.remove('saved_password');
       }
@@ -172,9 +181,9 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          AppPageTransitions.route(_routeForRole(loginResult)),
-        );
+        Navigator.of(
+          context,
+        ).pushReplacement(AppPageTransitions.route(_routeForRole(loginResult)));
       }
     } catch (e) {
       if (!mounted) return;
@@ -209,7 +218,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final shortestSide = screenSize.shortestSide;
     final isTablet = shortestSide >= 600;
     final isWideLayout =
-        screenSize.width >= 900 || (screenSize.width / screenSize.height) > 1.15;
+        screenSize.width >= 900 ||
+        (screenSize.width / screenSize.height) > 1.15;
     final headerImageFit = isWideLayout ? BoxFit.contain : BoxFit.cover;
 
     // ADJUSTABLE RATIOS:
@@ -245,20 +255,21 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Container(
                 height: headerHeight,
                 decoration: const BoxDecoration(color: Colors.white),
-                child: Image.asset(
-                  'assets/images/fam.png',
-                  fit: headerImageFit,
-                  alignment: Alignment.bottomCenter,
-                  filterQuality: FilterQuality.high,
-                )
-                    .animate()
-                    .fadeIn(duration: 800.ms)
-                    .scale(
-                      begin: isWideLayout
-                          ? const Offset(1.0, 1.0)
-                          : const Offset(1.1, 1.1),
-                      duration: 1000.ms,
-                    ),
+                child:
+                    Image.asset(
+                          'assets/images/fam.png',
+                          fit: headerImageFit,
+                          alignment: Alignment.bottomCenter,
+                          filterQuality: FilterQuality.high,
+                        )
+                        .animate()
+                        .fadeIn(duration: 800.ms)
+                        .scale(
+                          begin: isWideLayout
+                              ? const Offset(1.0, 1.0)
+                              : const Offset(1.1, 1.1),
+                          duration: 1000.ms,
+                        ),
               ),
             ),
           ),
