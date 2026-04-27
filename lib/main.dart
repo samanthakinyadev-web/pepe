@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:elimupepe/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
-import 'package:elimupepe/core/services/analytics_service.dart';
 import 'package:elimupepe/features/auth/auth_gate.dart';
+import 'package:elimupepe/core/services/analytics_service.dart';
 import 'package:elimupepe/core/theme/app_page_transitions.dart';
 
 void main() async {
@@ -52,9 +52,7 @@ class SecureElimupepeApp extends StatelessWidget {
           foregroundColor: AppColors.textLight,
         ),
       ),
-      navigatorObservers: [
-        if (analyticsObserver != null) analyticsObserver,
-      ],
+      navigatorObservers: [if (analyticsObserver != null) analyticsObserver],
       home: const AuthGate(),
     );
   }

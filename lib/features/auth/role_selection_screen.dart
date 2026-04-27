@@ -83,9 +83,9 @@ class RoleSelectionScreen extends StatelessWidget {
                       children: [
                         const Expanded(
                           child: Text(
-                            'You need a Safaricom line to subscribe\n\n'
-                            '1️⃣ Visit our website to view available plans\n'
-                            '2️⃣ Confirm payment \n'
+                            'To get started:\n\n'
+                            '1️⃣ Visit our website\n'
+                            '2️⃣ Create an account\n'
                             '3️⃣ Then log in and continue learning 🎉\n\n'
                             '✅ Quick and easy!',
 

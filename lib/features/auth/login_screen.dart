@@ -220,13 +220,13 @@ class _LoginScreenState extends State<LoginScreen> {
     final isWideLayout =
         screenSize.width >= 900 ||
         (screenSize.width / screenSize.height) > 1.15;
-    final headerImageFit = isWideLayout ? BoxFit.contain : BoxFit.cover;
+    final headerImageFit = BoxFit.cover;
+    final imageAlignment = Alignment.topCenter;
 
     // ADJUSTABLE RATIOS:
-    // Header takes 35-40% of height, content starts slightly above the wave's bottom.
-    final headerHeight = screenSize.height * (isTablet ? 0.35 : 0.40);
+    // Header takes a slightly larger portion on tablet/wide layouts so the image fits better.
+    final headerHeight = screenSize.height * (isTablet ? 0.42 : 0.40);
     final contentTopPadding = headerHeight * 0.85;
-
     return Scaffold(
       backgroundColor: _softBackground,
       resizeToAvoidBottomInset: true,
@@ -255,21 +255,23 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Container(
                 height: headerHeight,
                 decoration: const BoxDecoration(color: Colors.white),
-                child:
-                    Image.asset(
-                          'assets/images/fam.png',
-                          fit: headerImageFit,
-                          alignment: Alignment.bottomCenter,
-                          filterQuality: FilterQuality.high,
-                        )
-                        .animate()
-                        .fadeIn(duration: 800.ms)
-                        .scale(
-                          begin: isWideLayout
-                              ? const Offset(1.0, 1.0)
-                              : const Offset(1.1, 1.1),
-                          duration: 1000.ms,
-                        ),
+                child: SizedBox.expand(
+                  child:
+                      Image.asset(
+                            'assets/images/fam.png',
+                            fit: headerImageFit,
+                            alignment: imageAlignment,
+                            filterQuality: FilterQuality.high,
+                          )
+                          .animate()
+                          .fadeIn(duration: 800.ms)
+                          .scale(
+                            begin: isWideLayout
+                                ? const Offset(1.0, 1.0)
+                                : const Offset(1.1, 1.1),
+                            duration: 1000.ms,
+                          ),
+                ),
               ),
             ),
           ),
@@ -278,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final double maxWidth = isTablet ? 500 : double.infinity;
+                final double maxWidth = isTablet ? 450 : double.infinity;
 
                 return SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
