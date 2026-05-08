@@ -34,8 +34,8 @@ class DownloadService {
       }
 
       final storageDir = await StorageService.instance.getEbooksDirectory();
-      final fileName = '${ebook.id}_${ebook.title.replaceAll(' ', '_')}.pdf';
-      final filePath = path.join(storageDir.path, fileName);
+      final fileName = _sanitizeFileName('${ebook.id}_${ebook.title}');
+      final filePath = path.join(storageDir.path, '$fileName.pdf');
 
       // Start download with progress tracking
       final response = await _dio.download(
@@ -53,7 +53,7 @@ class DownloadService {
         // Update ebook metadata in database
         final updatedEbook = ebook.copyWith(
           isDownloaded: true,
-          localPath: fileName,
+          localPath: filePath,
           downloadedDate: DateTime.now(),
         );
 
@@ -152,6 +152,15 @@ class DownloadService {
     } catch (e) {
       throw Exception('Failed to fetch storage stats: ${e.toString()}');
     }
+  }
+
+  String _sanitizeFileName(String rawName) {
+    final cleaned = rawName
+        .replaceAll(RegExp(r'[\\/:*?"<>|]+'), '_')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .trim();
+    return cleaned.isEmpty ? 'ebook_download' : cleaned;
   }
 }
 

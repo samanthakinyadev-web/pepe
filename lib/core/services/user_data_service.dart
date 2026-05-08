@@ -28,6 +28,9 @@ class UserDataService {
     try {
       final notifications = await LearnerDashboardApiService.instance
           .fetchNotifications();
+      if (notifications.isEmpty) {
+        return [];
+      }
       return notifications
           .whereType<Map<String, dynamic>>()
           .map(_normalizeNotification)

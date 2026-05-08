@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:elimupepe/models/menu_item.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:elimupepe/core/widgets/elimu_card.dart';
-import 'package:elimupepe/core/widgets/elimu_button.dart';
 import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:elimupepe/core/utils/image_url_resolver.dart';
 import 'package:elimupepe/features/quiz/quiz_session_screen.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 
 class CategoryItemsScreen extends StatefulWidget {
   final MenuItem menuItem;
@@ -103,48 +103,16 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
         }
 
         if (snapshot.hasError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 56,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Failed to load ${widget.menuItem.title}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${snapshot.error}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElimuButton(
-                    text: 'Retry',
-                    icon: Icons.refresh,
-                    width: 150,
-                    onPressed: () {
-                      setState(() {
-                        _itemsFuture = LearnerDashboardApiService.instance
-                            .fetchMenuItems(menuId: widget.menuItem.id);
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
+          return ErrorFeedback.buildInlineError(
+            context: context,
+            title: 'Failed to load ${widget.menuItem.title}',
+            error: snapshot.error,
+            onRetry: () {
+              setState(() {
+                _itemsFuture = LearnerDashboardApiService.instance
+                    .fetchMenuItems(menuId: widget.menuItem.id);
+              });
+            },
           );
         }
 
@@ -409,12 +377,11 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
           .fetchWebviewLoginUrl(targetUrl: normalizedUrl);
       if (webviewLoginUrl == null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Could not open this content securely. Please try again.',
-            ),
-          ),
+        await ErrorFeedback.showErrorDialog(
+          context,
+          title: 'Secure content unavailable',
+          error: 'Please check your network connection and try again.',
+          fallback: 'Could not open this content securely. Please try again.',
         );
         return;
       }

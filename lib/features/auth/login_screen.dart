@@ -13,6 +13,9 @@ import 'package:elimupepe/features/teacher/teacher_dashboard.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/features/parental_control/parent_dashboard.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
+import 'package:flutter/services.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -68,8 +71,10 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       if (mounted) {
-        _studentIdController.text = studentId?.toUpperCase() ?? '';
-        _passwordController.text = password;
+        final savedStudentId = studentId;
+        final savedPassword = password;
+        _studentIdController.text = savedStudentId.toUpperCase();
+        _passwordController.text = savedPassword;
         setState(() => _rememberMe = rememberMe);
       }
     }
@@ -110,10 +115,17 @@ class _LoginScreenState extends State<LoginScreen> {
         parameters: {'remember_me': _rememberMe ? 1 : 0},
       );
 
-      final loginResult = await AuthService.instance.login(
-        studentId: _studentIdController.text,
-        password: _passwordController.text,
-      );
+      final loginTrace = FirebasePerformance.instance.newTrace('student_login');
+      await loginTrace.start();
+      late final LoginResult loginResult;
+      try {
+        loginResult = await AuthService.instance.login(
+          studentId: _studentIdController.text,
+          password: _passwordController.text,
+        );
+      } finally {
+        await loginTrace.stop();
+      }
 
       if (!mounted) {
         return;
@@ -132,9 +144,24 @@ class _LoginScreenState extends State<LoginScreen> {
           },
         );
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(loginResult.message)));
+          if (ErrorFeedback.isNetworkError(reason) ||
+              ErrorFeedback.isServerError(reason) ||
+              ErrorFeedback.isSecureAccessError(reason)) {
+            await ErrorFeedback.showErrorDialog(
+              context,
+              title: 'Login unavailable',
+              error: reason,
+              fallback: 'Could not complete login right now.',
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(loginResult.message),
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: Colors.red.shade700,
+              ),
+            );
+          }
         }
         return;
       }
@@ -167,6 +194,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
       await AnalyticsService.instance.logLogin(method: 'student_id');
 
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+
       final normalizedStudentId = _studentIdController.text
           .trim()
           .toUpperCase();
@@ -190,9 +224,12 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(
+      await ErrorFeedback.showErrorDialog(
         context,
-      ).showSnackBar(SnackBar(content: Text('Login error: $e')));
+        title: 'Login error',
+        error: e,
+        fallback: 'Could not complete login right now.',
+      );
       AnalyticsService.instance.logEvent('login_error');
     }
   }
@@ -209,7 +246,10 @@ class _LoginScreenState extends State<LoginScreen> {
       return const ParentDashboard();
     }
 
-    return const GamifiedDashboardScreen();
+    return const GamifiedDashboardScreen(
+      initialIndex: 0,
+      restoreLastTab: false,
+    );
   }
 
   @override

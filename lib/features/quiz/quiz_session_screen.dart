@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 
 class QuizSessionScreen extends StatefulWidget {
   final String title;
@@ -60,15 +61,17 @@ class _QuizSessionScreenState extends State<QuizSessionScreen> {
         throw Exception('This quiz did not return any questions.');
       }
 
+      if (!mounted) return;
       setState(() {
         _sessionData = response;
         _questions = questions;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = ErrorFeedback.userMessage(e);
       });
     }
   }
@@ -179,6 +182,7 @@ class _QuizSessionScreenState extends State<QuizSessionScreen> {
         return;
       }
 
+      if (!mounted) return;
       setState(() {
         _currentIndex += 1;
         _selectedOptionValue = null;
@@ -186,13 +190,26 @@ class _QuizSessionScreenState extends State<QuizSessionScreen> {
         _isSubmitting = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isSubmitting = false;
       });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      if (ErrorFeedback.shouldShowDialog(e)) {
+        await ErrorFeedback.showErrorDialog(
+          context,
+          title: 'Quiz action failed',
+          error: e,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ErrorFeedback.userMessage(e)),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
     }
   }
 
@@ -202,10 +219,13 @@ class _QuizSessionScreenState extends State<QuizSessionScreen> {
   ) {
     final quizId = _quizId;
     final questionId = question.id;
-    final option = question.options.cast<_QuizOption?>().firstWhere(
-      (item) => item?.value == answerValue,
-      orElse: () => null,
-    );
+    _QuizOption? option;
+    for (final candidate in question.options) {
+      if (candidate.value == answerValue) {
+        option = candidate;
+        break;
+      }
+    }
 
     return {
       if (quizId != null) 'quiz_id': quizId,
@@ -217,7 +237,7 @@ class _QuizSessionScreenState extends State<QuizSessionScreen> {
       'answer': answerValue,
       'selected_answer': answerValue,
       'selected_option': answerValue,
-      if (option?.id != null) 'option_id': option!.id,
+      if (option?.id != null) 'option_id': option?.id,
     };
   }
 
@@ -236,11 +256,13 @@ class _QuizSessionScreenState extends State<QuizSessionScreen> {
       final resultResponse = await LearnerDashboardApiService.instance
           .fetchQuizResult(finalPayload);
 
+      if (!mounted) return;
       setState(() {
         _resultData = resultResponse ?? submitResponse ?? <String, dynamic>{};
         _isSubmitting = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isSubmitting = false;
         _resultData = {
@@ -303,35 +325,11 @@ class _QuizSessionScreenState extends State<QuizSessionScreen> {
   }
 
   Widget _buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 56, color: Colors.redAccent),
-            const SizedBox(height: 12),
-            Text(
-              _error ?? 'Could not start this quiz.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppColors.textMain,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _startQuiz,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.lightGreen,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
+    return ErrorFeedback.buildInlineError(
+      context: context,
+      title: 'Could not start this quiz',
+      error: _error,
+      onRetry: _startQuiz,
     );
   }
 

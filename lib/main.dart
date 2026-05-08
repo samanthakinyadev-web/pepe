@@ -1,31 +1,112 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:elimupepe/firebase_options.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:elimupepe/core/theme/app_theme.dart';
-import 'package:elimupepe/features/auth/auth_gate.dart';
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:elimupepe/core/services/analytics_service.dart';
 import 'package:elimupepe/core/theme/app_page_transitions.dart';
+import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:elimupepe/features/auth/auth_gate.dart';
+import 'package:elimupepe/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_performance/firebase_performance.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/services.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded(
+    () {
+      runApp(const AppBootstrapper());
+    },
+    (error, stackTrace) {
+      _recordCrashSafely(error, stackTrace);
+    },
+  );
+}
 
-  // Initialize Firebase with the generated options
+void _recordCrashSafely(Object error, StackTrace stackTrace) {
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (e) {
-    debugPrint('Firebase initialization failed: $e');
+    if (Firebase.apps.isNotEmpty) {
+      FirebaseCrashlytics.instance.recordError(
+        error,
+        stackTrace,
+        fatal: true,
+      );
+    }
+  } catch (_) {
+    // Never let crash reporting crash the app.
+  }
+}
+
+class AppBootstrapper extends StatefulWidget {
+  const AppBootstrapper({super.key});
+
+  @override
+  State<AppBootstrapper> createState() => _AppBootstrapperState();
+}
+
+class _AppBootstrapperState extends State<AppBootstrapper> {
+  bool _isReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeApp();
   }
 
-  // Lock orientation to portrait for a better, more consistent experience for kids
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  Future<void> _initializeApp() async {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
+        !kDebugMode,
+      );
+      await FirebasePerformance.instance.setPerformanceCollectionEnabled(
+        !kDebugMode,
+      );
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterError;
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } catch (e, stackTrace) {
+      debugPrint('Firebase initialization failed: $e');
+      _recordCrashSafely(e, stackTrace);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isReady = true;
+        });
+      }
+    }
+  }
 
-  runApp(const SecureElimupepeApp());
+  @override
+  Widget build(BuildContext context) {
+    if (!_isReady) {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: AppColors.surfaceGray,
+          body: Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation(AppColors.brandGreen),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return const SecureElimupepeApp();
+  }
 }
 
 class SecureElimupepeApp extends StatelessWidget {

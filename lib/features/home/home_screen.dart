@@ -9,6 +9,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/widgets/elimu_card.dart';
 import 'package:elimupepe/core/widgets/elimu_button.dart';
 import 'package:elimupepe/core/config/app_endpoints.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/features/reader/reader_screen.dart';
 import 'package:elimupepe/core/services/storage_service.dart';
@@ -19,6 +20,7 @@ import 'package:elimupepe/core/services/database_service.dart';
 import 'package:elimupepe/core/services/analytics_service.dart';
 import 'package:elimupepe/core/services/thumbnail_service.dart';
 import 'package:elimupepe/core/services/user_data_service.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 import 'package:elimupepe/features/settings/settings_screen.dart';
 import 'package:elimupepe/features/home/category_items_screen.dart';
 import 'package:elimupepe/core/services/cloud_sync_service_php.dart';
@@ -85,7 +87,6 @@ class _HomeScreenState extends State<HomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _loadEbooks();
     _loadCloudBooks();
     _warmUpLibraryData();
     _loadLearnerGrade();
@@ -102,6 +103,32 @@ class _HomeScreenState extends State<HomeScreen>
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _showActionError(
+    Object error, {
+    required String title,
+    String fallback = 'Something went wrong. Please try again.',
+  }) async {
+    if (!mounted) return;
+
+    if (ErrorFeedback.shouldShowDialog(error)) {
+      await ErrorFeedback.showErrorDialog(
+        context,
+        title: title,
+        error: error,
+        fallback: fallback,
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ErrorFeedback.userMessage(error, fallback: fallback)),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Colors.red.shade700,
+      ),
+    );
   }
 
   void _resetSearch({bool refreshBooks = false}) {
@@ -153,12 +180,20 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _refreshLibrary() async {
-    await Future.wait([
-      _loadLearnerGrade(),
-      _loadStudentCourses(),
-      _loadEbooks(),
-      _loadCloudBooks(),
-    ]);
+    final refreshTrace = FirebasePerformance.instance.newTrace(
+      'library_refresh',
+    );
+    await refreshTrace.start();
+    try {
+      await Future.wait([
+        _loadLearnerGrade(),
+        _loadStudentCourses(),
+        _loadEbooks(),
+        _loadCloudBooks(),
+      ]);
+    } finally {
+      await refreshTrace.stop();
+    }
   }
 
   Future<void> _loadEbooks() async {
@@ -182,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _ebooksError = e.toString();
+        _ebooksError = ErrorFeedback.userMessage(e);
         _isLoadingEbooks = false;
       });
     }
@@ -209,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _cloudBooksError = e.toString();
+        _cloudBooksError = ErrorFeedback.userMessage(e);
         _isLoadingCloudBooks = false;
       });
     }
@@ -521,14 +556,10 @@ class _HomeScreenState extends State<HomeScreen>
               'book_title': cloudBook.title,
             },
           );
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                '❌ Download failed. Please check your internet and try again.',
-              ),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 3),
-            ),
+          await _showActionError(
+            'Please check your network connection and try again.',
+            title: 'Download failed',
+            fallback: 'Please check your network connection and try again.',
           );
         }
       }
@@ -546,12 +577,10 @@ class _HomeScreenState extends State<HomeScreen>
         setState(() {
           _downloadProgress.remove(cloudBook.id);
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
+        await _showActionError(
+          e,
+          title: 'Download error',
+          fallback: 'Please check your network connection and try again.',
         );
       }
     }
@@ -597,10 +626,11 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     if (webviewLoginUrl == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open this area securely. Please try again.'),
-        ),
+      await ErrorFeedback.showErrorDialog(
+        context,
+        title: 'Secure access unavailable',
+        error: 'Please check your network connection and try again.',
+        fallback: 'Could not open this area securely. Please try again.',
       );
       return;
     }
@@ -817,7 +847,7 @@ class _HomeScreenState extends State<HomeScreen>
                 _selectedCourse ??
                 (_studentCourses.isNotEmpty ? _studentCourses.first : null);
 
-            var myBooks = _booksForLearnerCourse(_ebooks, learnerCourse);
+            var myBooks = _ebooks.toList();
             var discoverBooks = _cloudBooks.toList();
 
             final learnerCloudBooks = _booksForLearnerCourse(
@@ -1006,6 +1036,7 @@ class _HomeScreenState extends State<HomeScreen>
                     child: TabBarView(
                       children: [
                         _buildBooksTab(
+                          sectionLabel: 'Downloaded books',
                           books: myBooks,
                           isLoading: _isLoadingEbooks,
                           error: _ebooksError,
@@ -1014,6 +1045,7 @@ class _HomeScreenState extends State<HomeScreen>
                               : 'No downloaded books available',
                         ),
                         _buildBooksTab(
+                          sectionLabel: 'Available books',
                           books: discoverBooks,
                           isLoading: _isLoadingCloudBooks,
                           error: _cloudBooksError,
@@ -1088,32 +1120,60 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildBooksTab({
+    required String sectionLabel,
     required List<Ebook> books,
     required bool isLoading,
     required String? error,
     required String emptyMessage,
   }) {
     if (error != null && books.isEmpty) {
+      final isNetworkError = ErrorFeedback.isNetworkError(error);
+      final message = isNetworkError
+          ? 'The app cannot reach the library server right now.\nPlease check your network connection and try again.'
+          : error;
+
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           const SizedBox(height: 120),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: Colors.black45,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  error,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.black54),
-                ),
-              ],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.cloud_off_rounded,
+                    size: 64,
+                    color: Colors.black45,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isNetworkError
+                        ? '$sectionLabel unavailable'
+                        : 'Library unavailable',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                  const SizedBox(height: 16),
+                  ElimuButton(
+                    text: 'Try Again',
+                    icon: Icons.refresh,
+                    width: 150,
+                    onPressed: _refreshLibrary,
+                  ),
+                ],
+              ),
             ),
           ),
         ],

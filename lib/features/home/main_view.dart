@@ -1,705 +1,1895 @@
-// import 'dart:math' as math;
-// import 'package:flutter/material.dart';
-// import 'package:elimupepe/core/theme/app_theme.dart';
-// import 'package:elimupepe/core/widgets/elimu_button.dart';
-// import 'package:elimupepe/core/widgets/elimu_card.dart';
-// import 'package:elimupepe/models/menu_item.dart';
-// import 'package:elimupepe/core/services/auth_service.dart';
-// import 'package:elimupepe/core/services/database_service.dart';
-// import 'package:elimupepe/features/home/category_items_screen.dart';
-// import 'package:elimupepe/features/settings/webview_content_screen.dart';
-// import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
-// import 'package:elimupepe/core/services/user_data_service.dart';
-// import 'package:elimupepe/core/utils/image_url_resolver.dart';
-// import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math' as math;
+import 'package:flutter/material.dart';
+import 'package:elimupepe/models/menu_item.dart';
+import 'package:elimupepe/models/competency.dart';
+import 'package:elimupepe/core/theme/app_theme.dart';
+import 'package:elimupepe/core/widgets/elimu_card.dart';
+import 'package:elimupepe/core/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:elimupepe/features/home/category_items_screen.dart';
+import 'package:elimupepe/features/settings/webview_content_screen.dart';
+import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
 
-// class MainView extends StatefulWidget {
-//   final Function(int) onNavigate;
+enum DashboardSection {
+  overview,
+  pillars,
+  competencies,
+  tasks,
+  outcomes,
+  activity,
+  achievements,
+  timetable,
+  summary,
+  parentTip,
+}
 
-//   const MainView({super.key, required this.onNavigate});
+class _DashboardSectionInfo {
+  const _DashboardSectionInfo({
+    required this.section,
+    required this.label,
+    required this.icon,
+  });
 
-//   @override
-//   State<MainView> createState() => _MainViewState();
-// }
+  final DashboardSection section;
+  final String label;
+  final IconData icon;
+}
 
-// class _MainViewState extends State<MainView> {
-//   static const String _avatarCacheKeyPref = 'profile_image_cache_key';
-//   String _userName = "Learner";
-//   String _profileImageUrl = '';
-//   final TextEditingController _searchController = TextEditingController();
+class MainView extends StatefulWidget {
+  final Function(int) onNavigate;
 
-//   @override
-//   void initState() {
-//     super.initState();
-//     _fetchUserProfile();
-//   }
+  const MainView({super.key, required this.onNavigate});
 
-//   @override
-//   void dispose() {
-//     _searchController.dispose();
-//     super.dispose();
-//   }
+  @override
+  State<MainView> createState() => _MainViewState();
+}
 
-//   Future<void> _fetchUserProfile() async {
-//     try {
-//       final prefs = await SharedPreferences.getInstance();
-//       if (mounted) {
-//         setState(() {
-//           _profileImageUrl = ImageUrlResolver.withCacheBuster(
-//                 prefs.getString('profile_image_url') ?? '',
-//                 cacheKey: prefs.getString(_avatarCacheKeyPref),
-//               ) ??
-//               '';
-//           _userName = prefs.getString('user_name') ?? _userName;
-//         });
-//       }
+class _MainViewState extends State<MainView> {
+  String _userName = "Learner";
+  String _grade = "Grade 4 - Middle School";
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _sectionScrollController = ScrollController();
+  bool _showWeeklySummary = false;
+  bool _showParentTip = false;
+  DashboardSection _selectedSection = DashboardSection.overview;
 
-//       final user = await AuthService.instance.getCurrentUser();
-//       if (mounted) {
-//         setState(() {
-//           _userName = user['name'] ?? "Learner";
-//           final avatar = ImageUrlResolver.fromMap(user);
-//           if (avatar != null && avatar.isNotEmpty) {
-//             _profileImageUrl =
-//                 ImageUrlResolver.withCacheBuster(
-//                   avatar,
-//                   cacheKey: prefs.getString(_avatarCacheKeyPref),
-//                 ) ??
-//                 avatar;
-//           }
-//         });
-//       }
-//     } catch (e) {
-//       // Fallback for Guest mode
-//     }
-//   }
+  List<Competency> _competencies = [];
+  String _weeklyGoalTitle = "Loading...";
+  double _weeklyProgress = 0.0;
+  bool _isLoading = true;
 
-//   Future<void> _onSelectItem(MenuItem item) async {
-//     if (item.isComingSoon) return;
+  static const List<_DashboardSectionInfo> _dashboardSections = [
+    _DashboardSectionInfo(
+      section: DashboardSection.overview,
+      label: 'Overview',
+      icon: Icons.dashboard_rounded,
+    ),
+    _DashboardSectionInfo(
+      section: DashboardSection.pillars,
+      label: 'Pillars',
+      icon: Icons.grid_view_rounded,
+    ),
+    _DashboardSectionInfo(
+      section: DashboardSection.competencies,
+      label: 'Competencies',
+      icon: Icons.timeline_rounded,
+    ),
+    _DashboardSectionInfo(
+      section: DashboardSection.tasks,
+      label: 'Tasks',
+      icon: Icons.assignment_rounded,
+    ),
+    _DashboardSectionInfo(
+      section: DashboardSection.outcomes,
+      label: 'Outcomes',
+      icon: Icons.flag_rounded,
+    ),
+    _DashboardSectionInfo(
+      section: DashboardSection.activity,
+      label: 'Activity',
+      icon: Icons.history_rounded,
+    ),
+    _DashboardSectionInfo(
+      section: DashboardSection.achievements,
+      label: 'Awards',
+      icon: Icons.emoji_events_rounded,
+    ),
+    _DashboardSectionInfo(
+      section: DashboardSection.timetable,
+      label: 'Timetable',
+      icon: Icons.schedule_rounded,
+    ),
+    _DashboardSectionInfo(
+      section: DashboardSection.summary,
+      label: 'Summary',
+      icon: Icons.insights_rounded,
+    ),
+    _DashboardSectionInfo(
+      section: DashboardSection.parentTip,
+      label: 'Parent Tip',
+      icon: Icons.family_restroom_rounded,
+    ),
+  ];
 
-//     final intendedPath = MenuItem.directIntendedPathFor(item.id);
-//     if (intendedPath != null) {
-//       final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
-//       final webviewLoginUrl = await LearnerDashboardApiService.instance
-//           .fetchWebviewLoginUrl(targetUrl: targetUrl);
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
 
-//       if (!mounted) return;
+  Future<void> _loadDashboardData() async {
+    setState(() => _isLoading = true);
+    await _fetchUserProfile();
+    await _fetchCompetencies();
+    await _fetchWeeklyGoal();
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
 
-//       if (webviewLoginUrl == null) {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           const SnackBar(
-//             content: Text(
-//               'Could not open this area securely. Please try again.',
-//             ),
-//           ),
-//         );
-//         return;
-//       }
+  Future<void> _fetchCompetencies() async {
+    try {
+      final data = await LearnerDashboardApiService.instance.fetchCompetencies();
+      if (mounted) {
+        setState(() {
+          _competencies = data.map((e) => Competency.fromJson(e as Map<String, dynamic>)).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching competencies: $e");
+    }
+  }
 
-//       Navigator.push(
-//         context,
-//         MaterialPageRoute(
-//           builder: (context) =>
-//               WebViewContentScreen(title: item.title, url: webviewLoginUrl),
-//         ),
-//       );
-//       return;
-//     }
+  Future<void> _fetchWeeklyGoal() async {
+    try {
+      final goal = await LearnerDashboardApiService.instance.fetchWeeklyGoal();
+      if (mounted && goal != null) {
+        setState(() {
+          _weeklyGoalTitle = goal['title'] ?? "Weekly Goal";
+          _weeklyProgress = (goal['progress'] as num?)?.toDouble() ?? 0.0;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching weekly goal: $e");
+    }
+  }
 
-//     if (!mounted) return;
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _sectionScrollController.dispose();
+    super.dispose();
+  }
 
-//     Navigator.push(
-//       context,
-//       MaterialPageRoute(
-//         builder: (context) => CategoryItemsScreen(menuItem: item),
-//       ),
-//     );
-//   }
+  Future<void> _fetchUserProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _userName = prefs.getString('user_name') ?? _userName;
+          _grade = prefs.getString('grade') ?? _grade;
+        });
+      }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         backgroundColor: AppColors.brandGreen,
-//         elevation: 0,
-//         title: const Text("Dashboard"),
-//         actions: [
-//           Padding(
-//             padding: const EdgeInsets.only(right: 16),
-//             child: GestureDetector(
-//               onTap: () =>
-//                   widget.onNavigate(4), // Navigate to Profile Tab (index 4)
-//               child: CircleAvatar(
-//                 radius: 16,
-//                 backgroundImage: _profileImageUrl.isNotEmpty
-//                     ? NetworkImage(_profileImageUrl)
-//                     : null,
-//                 backgroundColor: Colors.white,
-//                 child: _profileImageUrl.isEmpty
-//                     ? const Icon(Icons.person, size: 18)
-//                     : null,
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//       body: _buildBody(),
-//     );
-//   }
+      final user = await AuthService.instance.getCurrentUser();
+      if (mounted) {
+        setState(() {
+          _userName = user['name'] ?? "Learner";
+        });
+      }
+    } catch (e) {
+      // Fallback for Guest mode
+    }
+  }
 
-//   // --- MAIN DASHBOARD BODY ---
-//   Widget _buildBody() {
-//     final menuItems = MenuItem.getDefaultMenuItems();
-//     return Container(
-//       color: AppColors.surfaceGray,
-//       child: DefaultTabController(
-//         length: 3,
-//         child: RefreshIndicator(
-//           color: AppColors.lightGreen,
-//           onRefresh: _fetchUserProfile,
-//           child: ListView(
-//             padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-//             children: [
-//               _buildHeaderCard(),
-//               const SizedBox(height: 20),
-//               _buildSectionHeader("Quick Access"),
-//               const SizedBox(height: 12),
-//               _buildQuickAccessTabs(menuItems),
-//               const SizedBox(height: 20),
-//               _buildDailyProgressCard(),
-//               const SizedBox(height: 24),
-//               _buildSectionHeader(
-//                 "Overview",
-//                 onTap: () => _openMenuItem(menuItems),
-//               ),
-//               const SizedBox(height: 16),
-//               _buildStatsGrid(),
-//               const SizedBox(height: 24),
-//               _buildSectionHeader(
-//                 "My Learning Areas",
-//                 onTap: () => _openMenuItem(menuItems),
-//               ),
-//               const SizedBox(height: 16),
-//               _buildRecentActivitiesSection(),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
+  Future<void> _onSelectItem(MenuItem item) async {
+    if (item.isComingSoon) return;
 
-//   void _openMenuItem(List<MenuItem> menuItems) {
-//     if (menuItems.isEmpty) return;
-//     _onSelectItem(menuItems.first);
-//   }
+    final intendedPath = MenuItem.directIntendedPathFor(item.id);
+    if (intendedPath != null) {
+      final targetUrl = 'https://elimupepe.loholearning.co.ke$intendedPath';
+      final webviewLoginUrl = await LearnerDashboardApiService.instance
+          .fetchWebviewLoginUrl(targetUrl: targetUrl);
 
-//   Widget _buildHeaderCard() {
-//     return ElimuCard(
-//       padding: const EdgeInsets.all(20),
-//       backgroundColor: AppColors.brandGreen,
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Text(
-//             "Welcome back,",
-//             style: TextStyle(
-//               color: Colors.white.withValues(alpha: 0.85),
-//               fontSize: 14,
-//             ),
-//           ),
-//           const SizedBox(height: 4),
-//           Text(
-//             _userName,
-//             style: const TextStyle(
-//               color: Colors.white,
-//               fontSize: 24,
-//               fontWeight: FontWeight.bold,
-//             ),
-//           ),
-//           const SizedBox(height: 16),
-//           Row(
-//             crossAxisAlignment: CrossAxisAlignment.center,
-//             children: [
-//               Expanded(
-//                 child: Container(
-//                   padding: const EdgeInsets.symmetric(horizontal: 12),
-//                   decoration: BoxDecoration(
-//                     color: Colors.white.withValues(alpha: 0.18),
-//                     borderRadius: BorderRadius.circular(14),
-//                   ),
-//                   child: TextField(
-//                     controller: _searchController,
-//                     style: const TextStyle(color: Colors.white),
-//                     textInputAction: TextInputAction.search,
-//                     onSubmitted: (query) {
-//                       if (query.trim().isNotEmpty) {
-//                         widget.onNavigate(1); // Navigate to Library Tab
-//                       }
-//                     },
-//                     decoration: const InputDecoration(
-//                       hintText: "Search your library",
-//                       hintStyle: TextStyle(color: Colors.white70),
-//                       border: InputBorder.none,
-//                       icon: Icon(Icons.search, color: AppColors.white),
-//                     ),
-//                   ),
-//                 ),
-//               ),
-//               const SizedBox(width: 12),
-//               GestureDetector(
-//                 onTap: () {
-//                   if (_searchController.text.trim().isNotEmpty) {
-//                     widget.onNavigate(1); // Navigate to Library Tab
-//                   }
-//                 },
-//                 child: Container(
-//                   padding: const EdgeInsets.all(12),
-//                   decoration: BoxDecoration(
-//                     color: Colors.white.withValues(alpha: 0.2),
-//                     borderRadius: BorderRadius.circular(14),
-//                   ),
-//                   child: const Icon(
-//                     Icons.auto_stories,
-//                     color: AppColors.white,
-//                     size: 24,
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//           const SizedBox(height: 14),
-//           ElimuButton(
-//             text: "Start Learning",
-//             onPressed: () => widget.onNavigate(1), // Navigate to Library Tab
-//           ),
-//         ],
-//       ),
-//     );
-//   }
+      if (!mounted) return;
 
-//   Widget _buildQuickAccessTabs(List<MenuItem> menuItems) {
-//     final quickItems = menuItems;
-//     return ElimuCard(
-//       padding: const EdgeInsets.all(12),
-//       child: Column(
-//         children: [
-//           const TabBar(
-//             labelColor: AppColors.brandGreen,
-//             unselectedLabelColor: AppColors.textMuted,
-//             indicatorColor: AppColors.brandGreen,
-//             indicatorSize: TabBarIndicatorSize.label,
-//             indicatorWeight: 3,
-//             tabs: [
-//               Tab(text: "Continue"),
-//               Tab(text: "Bookmarks"),
-//               Tab(text: "Explore"),
-//             ],
-//           ),
-//           const SizedBox(height: 12),
-//           SizedBox(
-//             height: 140,
-//             child: TabBarView(
-//               children: [
-//                 _buildQuickAccessRow(quickItems),
-//                 _buildQuickAccessRow(quickItems.reversed.toList()),
-//                 _buildQuickAccessRow(quickItems),
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
+      if (webviewLoginUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not open this area securely. Please try again.',
+            ),
+          ),
+        );
+        return;
+      }
 
-//   Widget _buildQuickAccessRow(List<MenuItem> items) {
-//     return ListView.separated(
-//       scrollDirection: Axis.horizontal,
-//       itemCount: items.length,
-//       separatorBuilder: (context, index) => const SizedBox(width: 12),
-//       itemBuilder: (context, index) {
-//         final item = items[index];
-//         return ElimuCard(
-//           padding: const EdgeInsets.all(14),
-//           backgroundColor: AppColors.brandGreen.withValues(alpha: 0.08),
-//           borderColor: AppColors.brandGreen.withValues(alpha: 0.1),
-//           onTap: item.isComingSoon ? null : () => _onSelectItem(item),
-//           child: SizedBox(
-//             width:
-//                 100, // Reduced from 140 since padding/border might take space
-//             child: Column(
-//               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Icon(item.icon, color: AppColors.brandGreen),
-//                 const SizedBox(height: 8),
-//                 Text(
-//                   item.title,
-//                   style: const TextStyle(
-//                     fontWeight: FontWeight.w600,
-//                     color: AppColors.brandGreen,
-//                   ),
-//                 ),
-//                 Text(
-//                   item.isComingSoon ? "Coming soon" : "Open",
-//                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         );
-//       },
-//     );
-//   }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              WebViewContentScreen(title: item.title, url: webviewLoginUrl),
+        ),
+      );
+      return;
+    }
 
-//   Widget _buildDailyProgressCard() {
-//     return ElimuCard(
-//       padding: const EdgeInsets.all(20),
-//       child: Row(
-//         children: [
-//           SizedBox(
-//             height: 75,
-//             width: 75,
-//             child: CustomPaint(
-//               painter: RingProgressPainter(
-//                 progress: 0.75,
-//                 color: AppColors.accentOrange,
-//               ),
-//               child: const Center(
-//                 child: Text(
-//                   "75%",
-//                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-//                 ),
-//               ),
-//             ),
-//           ),
-//           const SizedBox(width: 20),
-//           const Expanded(
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Text(
-//                   "Daily Goal",
-//                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-//                 ),
-//                 Text(
-//                   "Keep it up! You're almost at your target for today.",
-//                   style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
+    if (!mounted) return;
 
-//   Widget _buildSectionHeader(String title, {VoidCallback? onTap}) {
-//     return Row(
-//       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//       children: [
-//         Text(
-//           title,
-//           style: const TextStyle(
-//             fontSize: 18,
-//             fontWeight: FontWeight.bold,
-//             color: AppColors.brandGreen,
-//           ),
-//         ),
-//         InkWell(
-//           onTap: onTap,
-//           borderRadius: BorderRadius.circular(8),
-//           child: const Padding(
-//             padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-//             child: Text(
-//               "See All",
-//               style: TextStyle(
-//                 color: AppColors.primaryBlue,
-//                 fontWeight: FontWeight.w600,
-//               ),
-//             ),
-//           ),
-//         ),
-//       ],
-//     );
-//   }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategoryItemsScreen(menuItem: item),
+      ),
+    );
+  }
 
-//   Future<Map<String, String>> _fetchInsights() async {
-//     try {
-//       final dbService = DatabaseService.instance;
-//       final localBooks = await dbService.getAllEbooks();
-//       final results = await Future.wait<dynamic>([
-//         LearnerDashboardApiService.instance.fetchWallet(),
-//         UserDataService.instance.fetchGrades(),
-//         LearnerDashboardApiService.instance.fetchQuizzes(),
-//         LearnerDashboardApiService.instance.fetchStreaks(),
-//       ]);
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surfaceGray,
+      appBar: AppBar(
+        backgroundColor: AppColors.brandGreen,
+        elevation: 0,
+        title: const Text(
+          "Elimu Pepe",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+        ),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search_rounded),
+            onPressed: () => widget.onNavigate(1), // Go to Library/Search
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded),
+            onPressed: () =>
+                widget.onNavigate(4), // View feedback/notifications
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: SafeArea(child: _buildBody()),
+    );
+  }
 
-//       final wallet = results[0] as Map<String, dynamic>?;
-//       final grades = results[1] as List<dynamic>?;
-//       final quizzes = results[2] as List<dynamic>;
-//       final streaks = results[3] as Map<String, dynamic>?;
+  // --- MAIN DASHBOARD BODY ---
+  Widget _buildBody() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 900;
+        final navigator = isWide
+            ? _buildSectionRail()
+            : _buildSectionChips();
 
-//       final points = _readInt([
-//         wallet?['balance'],
-//         wallet?['coins'],
-//         wallet?['loho_coins'],
-//       ]);
-//       final completed = grades?.length ?? 0;
-//       final totalQuizzes = quizzes.length;
-//       final progress = totalQuizzes > 0
-//           ? ((completed / totalQuizzes).clamp(0, 1) * 100).round()
-//           : _readInt([streaks?['progress'], streaks?['completion_rate']]) ?? 0;
-//       final averageScore = completed > 0
-//           ? _readInt([
-//                   (grades!
-//                               .whereType<Map<String, dynamic>>()
-//                               .map(
-//                                 (grade) => _readInt([
-//                                   grade['score'],
-//                                   grade['marks'],
-//                                   grade['percentage'],
-//                                 ]),
-//                               )
-//                               .whereType<int>()
-//                               .fold<int>(0, (sum, item) => sum + item) /
-//                           completed)
-//                       .round(),
-//                 ]) ??
-//                 0
-//           : 0;
+        final content = RefreshIndicator(
+          color: AppColors.lightGreen,
+          onRefresh: _loadDashboardData,
+          child: Scrollbar(
+            controller: _sectionScrollController,
+            thumbVisibility: true,
+            trackVisibility: true,
+            thickness: 8,
+            radius: const Radius.circular(20),
+            child: SingleChildScrollView(
+              controller: _sectionScrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                isWide ? 24 : 16,
+                12,
+                isWide ? 24 : 16,
+                72,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: isWide ? 0 : constraints.maxWidth,
+                  maxWidth: isWide ? 1100 : constraints.maxWidth,
+                ),
+                child: _isLoading
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: 100),
+                          child: CircularProgressIndicator(
+                            color: AppColors.brandGreen,
+                          ),
+                        ),
+                      )
+                    : _buildSelectedSectionContent(),
+              ),
+            ),
+          ),
+        );
 
-//       return {
-//         'courses': localBooks.length.toString(),
-//         'progress': '$progress%',
-//         'points': points?.toString() ?? '0',
-//         'score': '$averageScore%',
-//       };
-//     } catch (e) {
-//       return {'courses': '0', 'progress': '0%', 'points': '0', 'score': '0%'};
-//     }
-//   }
+        if (isWide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(width: 280, child: navigator),
+              const VerticalDivider(width: 1),
+              Expanded(child: content),
+            ],
+          );
+        }
 
-//   int? _readInt(List<dynamic> values) {
-//     for (final value in values) {
-//       if (value is int) return value;
-//       if (value is double) return value.round();
-//       if (value is String) {
-//         final parsed = int.tryParse(value);
-//         if (parsed != null) return parsed;
-//       }
-//     }
-//     return null;
-//   }
+        return Column(
+          children: [
+            navigator,
+            Expanded(child: content),
+          ],
+        );
+      },
+    );
+  }
 
-//   Widget _buildStatsGrid() {
-//     return FutureBuilder<Map<String, String>>(
-//       future: _fetchInsights(),
-//       builder: (context, snapshot) {
-//         final data =
-//             snapshot.data ??
-//             {'courses': '-', 'progress': '-', 'points': '-', 'score': '-'};
-//         return LayoutBuilder(
-//           builder: (context, constraints) {
-//             const crossAxisSpacing = 12.0;
-//             const mainAxisSpacing = 12.0;
-//             final textScale = MediaQuery.textScalerOf(context).scale(1);
-//             final tileWidth = (constraints.maxWidth - crossAxisSpacing) / 2;
-//             final desiredHeight = 124.0 * textScale.clamp(1.0, 1.4);
-//             final childAspectRatio = tileWidth / desiredHeight;
+  Widget _buildSectionChips() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      alignment: Alignment.centerLeft,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _dashboardSections.map((section) {
+            final selected = _selectedSection == section.section;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                selected: selected,
+                label: Text(section.label),
+                onSelected: (_) {
+                  setState(() {
+                    _selectedSection = section.section;
+                  });
+                },
+                selectedColor: AppColors.brandGreen,
+                labelStyle: TextStyle(
+                  color: selected ? Colors.white : AppColors.textMain,
+                  fontWeight: FontWeight.w700,
+                ),
+                side: BorderSide(
+                  color: selected
+                      ? AppColors.brandGreen
+                      : AppColors.darkGray.withValues(alpha: 0.18),
+                ),
+                backgroundColor: Colors.white,
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
 
-//             return GridView.builder(
-//               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-//                 crossAxisCount: 2,
-//                 mainAxisSpacing: mainAxisSpacing,
-//                 crossAxisSpacing: crossAxisSpacing,
-//                 childAspectRatio: childAspectRatio,
-//               ),
-//               physics: const NeverScrollableScrollPhysics(),
-//               shrinkWrap: true,
-//               itemCount: 4,
-//               itemBuilder: (context, index) {
-//                 switch (index) {
-//                   case 0:
-//                     return _buildStatTile(
-//                       "Library Books",
-//                       data['courses']!,
-//                       Icons.menu_book_rounded,
-//                       AppColors.primaryBlue,
-//                     );
-//                   case 1:
-//                     return _buildStatTile(
-//                       "Progress",
-//                       data['progress']!,
-//                       Icons.trending_up,
-//                       AppColors.brandGreen,
-//                     );
-//                   case 2:
-//                     return _buildStatTile(
-//                       "Points",
-//                       data['points']!,
-//                       Icons.stars_rounded,
-//                       AppColors.accentOrange,
-//                     );
-//                   default:
-//                     return _buildStatTile(
-//                       "Avg Score",
-//                       data['score']!,
-//                       Icons.score,
-//                       AppColors.accentPurple,
-//                     );
-//                 }
-//               },
-//             );
-//           },
-//         );
-//       },
-//     );
-//   }
+  Widget _buildSectionRail() {
+    final selectedIndex = _dashboardSections.indexWhere(
+      (section) => section.section == _selectedSection,
+    );
 
-//   Future<List<dynamic>> _fetchRecentActivities() async {
-//     try {
-//       final items = await LearnerDashboardApiService.instance.fetchMenuItems(
-//         menuId: 'learning_areas',
-//       );
-//       // Safely handle if items is null or not strictly recognized as a List by the analyzer
-//       return (items as List?)?.take(3).toList() ?? [];
-//     } catch (e) {
-//       return [];
-//     }
-//   }
+    return Container(
+      color: Colors.white,
+      child: NavigationRail(
+        selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _selectedSection = _dashboardSections[index].section;
+          });
+        },
+        labelType: NavigationRailLabelType.all,
+        backgroundColor: Colors.white,
+        minWidth: 280,
+        groupAlignment: -0.9,
+        destinations: _dashboardSections
+            .map(
+              (section) => NavigationRailDestination(
+                icon: Icon(section.icon),
+                selectedIcon: Icon(section.icon),
+                label: Text(section.label),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
 
-//   Widget _buildRecentActivitiesSection() {
-//     return FutureBuilder<List<dynamic>>(
-//       future: _fetchRecentActivities(),
-//       builder: (context, snapshot) {
-//         if (snapshot.connectionState == ConnectionState.waiting) {
-//           return const Center(
-//             child: Padding(
-//               padding: EdgeInsets.all(16.0),
-//               child: CircularProgressIndicator(),
-//             ),
-//           );
-//         }
-//         final items = snapshot.data ?? [];
-//         if (items.isEmpty) {
-//           return const Padding(
-//             padding: EdgeInsets.all(16.0),
-//             child: Text(
-//               "No recent activities found.",
-//               style: TextStyle(color: Colors.grey),
-//             ),
-//           );
-//         }
-//         return Column(
-//           children: items.map((item) {
-//             final itemMap = item as Map<String, dynamic>? ?? {};
-//             final title =
-//                 itemMap['title'] ??
-//                 itemMap['course_name'] ??
-//                 itemMap['name'] ??
-//                 'Unknown Course';
-//             final subtitle = itemMap['subtitle'] ?? 'In Progress';
-//             return _buildActivityCard(
-//               title,
-//               subtitle.toString(),
-//               Icons.menu_book_rounded,
-//               AppColors.primaryBlue,
-//             );
-//           }).toList(),
-//         );
-//       },
-//     );
-//   }
+  Widget _buildSelectedSectionContent() {
+    switch (_selectedSection) {
+      case DashboardSection.overview:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildLearnerProfileCard(),
+            const SizedBox(height: 16),
+            _buildOverviewHighlights(),
+            const SizedBox(height: 20),
+            _buildQuickAccessSection(),
+            const SizedBox(height: 20),
+            _buildWeeklyGoalHero(),
+          ],
+        );
+      case DashboardSection.pillars:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              "Core Learning Pillars",
+              onTap: _showAllPillars,
+              trailing: const Icon(
+                Icons.grid_view_rounded,
+                color: AppColors.primaryBlue,
+                size: 18,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildPillarsGrid(),
+          ],
+        );
+      case DashboardSection.competencies:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader("Core Competencies"),
+            const SizedBox(height: 12),
+            _buildCompetencyProgress(),
+          ],
+        );
+      case DashboardSection.tasks:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader("Assignments & Tasks"),
+            const SizedBox(height: 12),
+            _buildAssignments(),
+          ],
+        );
+      case DashboardSection.outcomes:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader("Learning Objectives"),
+            const SizedBox(height: 12),
+            _buildLearningOutcomes(),
+          ],
+        );
+      case DashboardSection.activity:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader("Recent Activity"),
+            const SizedBox(height: 12),
+            _buildRecentActivities(),
+          ],
+        );
+      case DashboardSection.achievements:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader("Achievements"),
+            const SizedBox(height: 12),
+            _buildBadges(),
+          ],
+        );
+      case DashboardSection.timetable:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader("Timetable"),
+            const SizedBox(height: 12),
+            _buildTimetable(),
+          ],
+        );
+      case DashboardSection.summary:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              "Weekly Learning Summary",
+            ),
+            const SizedBox(height: 16),
+            _buildWeeklySummaryFeed(),
+          ],
+        );
+      case DashboardSection.parentTip:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionHeader(
+              "Parent Tip",
+            ),
+            const SizedBox(height: 16),
+            _buildParentTipSection(),
+          ],
+        );
+    }
+  }
 
-//   Widget _buildStatTile(
-//     String label,
-//     String value,
-//     IconData icon,
-//     Color color,
-//   ) {
-//     return ElimuCard(
-//       backgroundColor: color.withValues(alpha: 0.1),
-//       borderColor: color.withValues(alpha: 0.2),
-//       padding: const EdgeInsets.all(16),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Icon(icon, color: color, size: 24),
-//           const SizedBox(height: 12),
-//           Text(
-//             value,
-//             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-//           ),
-//           Text(
-//             label,
-//             style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
+  Widget _buildQuickAccessSection() {
+    final actions = _quickAccessActions;
 
-//   Widget _buildActivityCard(
-//     String title,
-//     String subtitle,
-//     IconData icon,
-//     Color color,
-//   ) {
-//     return Padding(
-//       padding: const EdgeInsets.only(bottom: 12),
-//       child: ElimuCard(
-//         padding: const EdgeInsets.all(4),
-//         child: ListTile(
-//           leading: CircleAvatar(
-//             backgroundColor: color.withValues(alpha: 0.1),
-//             child: Icon(icon, color: color),
-//           ),
-//           title: Text(
-//             title,
-//             style: const TextStyle(fontWeight: FontWeight.bold),
-//           ),
-//           subtitle: Text(subtitle),
-//           trailing: const Icon(Icons.chevron_right, size: 18),
-//         ),
-//       ),
-//     );
-//   }
-// }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          "Quick Access",
+          trailing: _buildSectionBadge("Tap to open"),
+        ),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 600) {
+              return SizedBox(
+                height: 132,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: actions.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final action = actions[index];
+                    return _buildQuickAccessCard(action, compact: true);
+                  },
+                ),
+              );
+            }
 
-// // --- CUSTOM PAINTER FOR CIRCULAR CHART ---
-// class RingProgressPainter extends CustomPainter {
-//   final double progress;
-//   final Color color;
+            final columns = constraints.maxWidth >= 900
+                ? 5
+                : constraints.maxWidth >= 700
+                    ? 4
+                    : 3;
+            const spacing = 12.0;
+            final cardWidth =
+                (constraints.maxWidth - spacing * (columns - 1)) / columns;
 
-//   RingProgressPainter({required this.progress, required this.color});
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: actions
+                  .map(
+                    (action) => SizedBox(
+                      width: cardWidth,
+                      child: _buildQuickAccessCard(action),
+                    ),
+                  )
+                  .toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
 
-//   @override
-//   void paint(Canvas canvas, Size size) {
-//     final strokeWidth = 8.0;
-//     final center = Offset(size.width / 2, size.height / 2);
-//     final radius = (size.width - strokeWidth) / 2;
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  }
 
-//     final bgPaint = Paint()
-//       ..color = color.withValues(alpha: 0.1)
-//       ..style = PaintingStyle.stroke
-//       ..strokeWidth = strokeWidth;
+  Widget _buildLearnerProfileCard() {
+    final initial = _userName.trim().isNotEmpty ? _userName.trim()[0] : 'L';
 
-//     final pgPaint = Paint()
-//       ..color = color
-//       ..style = PaintingStyle.stroke
-//       ..strokeWidth = strokeWidth
-//       ..strokeCap = StrokeCap.round;
+    return ElimuCard(
+      padding: EdgeInsets.zero,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.brandGreen,
+              AppColors.lightGreen,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.34),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    initial.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 22,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _greeting().toUpperCase(),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.72),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _userName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 24,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _grade,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.86),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildHeroBadge("CBC Learner"),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.waving_hand_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Here is your learning snapshot for today.",
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.94),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-//     canvas.drawCircle(center, radius, bgPaint);
-//     canvas.drawArc(
-//       Rect.fromCircle(center: center, radius: radius),
-//       -math.pi / 2,
-//       2 * math.pi * progress,
-//       false,
-//       pgPaint,
-//     );
-//   }
+  Widget _buildOverviewHighlights() {
+    final completedCount = _competencies.where((item) => item.progress >= 0.8).length;
+    final tasksDue = 2;
+    final progressPercent = (_weeklyProgress * 100).round();
 
-//   @override
-//   bool shouldRepaint(CustomPainter oldDelegate) => true;
-// }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          "Overview",
+          trailing: _buildSectionBadge("This week"),
+        ),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 720;
+            final cards = [
+              _buildOverviewStatCard(
+                title: "Weekly progress",
+                value: "$progressPercent%",
+                caption: _weeklyProgress >= 1
+                    ? "Goal reached"
+                    : "Keep going",
+                icon: Icons.trending_up_rounded,
+                accent: AppColors.primaryBlue,
+              ),
+              _buildOverviewStatCard(
+                title: "Strong competencies",
+                value: completedCount.toString(),
+                caption: completedCount == 1
+                    ? "Competency above 80%"
+                    : "Competencies above 80%",
+                icon: Icons.auto_graph_rounded,
+                accent: AppColors.brandGreen,
+              ),
+              _buildOverviewStatCard(
+                title: "Tasks due",
+                value: tasksDue.toString(),
+                caption: "Review pending work",
+                icon: Icons.assignment_late_rounded,
+                accent: AppColors.accentOrange,
+              ),
+            ];
+
+            if (isCompact) {
+              return Column(
+                children: cards
+                    .map(
+                      (card) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: card,
+                      ),
+                    )
+                    .toList(),
+              );
+            }
+
+            return Row(
+              children: [
+                for (var i = 0; i < cards.length; i++) ...[
+                  Expanded(child: cards[i]),
+                  if (i != cards.length - 1) const SizedBox(width: 12),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOverviewStatCard({
+    required String title,
+    required String value,
+    required String caption,
+    required IconData icon,
+    required Color accent,
+  }) {
+    return ElimuCard(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: accent, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: AppColors.textMain,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  caption,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompetencyProgress() {
+    if (_competencies.isEmpty) {
+      return const ElimuCard(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Text(
+              "No competency data available yet",
+              style: TextStyle(color: AppColors.textMuted),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: _competencies.map((competency) {
+        final name = competency.name;
+        final progress = competency.progress;
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: ElimuCard(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 50,
+                  height: 50,
+                  child: CustomPaint(
+                    painter: RingProgressPainter(
+                      progress: progress,
+                      color: AppColors.brandGreen,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${(progress * 100).round()}%',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.brandGreen,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textMain,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textMuted,
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildAssignments() {
+    // In a real app, this would also come from an API
+    final assignments = [
+      ("Science Project", "Due Tomorrow"),
+      ("Math Quiz", "2 Days Left"),
+    ];
+
+    if (assignments.isEmpty) {
+      return const ElimuCard(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Text(
+              "No pending assignments",
+              style: TextStyle(color: AppColors.textMuted),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: assignments.map((a) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: _assignmentTile(a.$1, a.$2),
+      )).toList(),
+    );
+  }
+
+  Widget _assignmentTile(String title, String subtitle) {
+    return ElimuCard(
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const CircleAvatar(
+          backgroundColor: AppColors.primaryBlue,
+          child: Icon(Icons.assignment_rounded, color: Colors.white),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(color: AppColors.textMuted),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+      ),
+    );
+  }
+
+  Widget _buildLearningOutcomes() {
+    return const ElimuCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("• Understand water conservation methods"),
+          SizedBox(height: 8),
+          Text("• Apply math in real-life situations"),
+          SizedBox(height: 8),
+          Text("• Work effectively in groups"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivities() {
+    // In a real app, this would also come from an API
+    final activities = [
+      ("Completed Science Quiz", "Today"),
+      ("Read English Story", "Yesterday"),
+    ];
+
+    if (activities.isEmpty) {
+      return const ElimuCard(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Text(
+              "No recent activity recorded",
+              style: TextStyle(color: AppColors.textMuted),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: activities.map((a) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: _activityTile(a.$1, a.$2),
+      )).toList(),
+    );
+  }
+
+  Widget _activityTile(String title, String subtitle) {
+    return ElimuCard(
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const CircleAvatar(
+          backgroundColor: AppColors.accentOrange,
+          child: Icon(Icons.history_rounded, color: Colors.white),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(color: AppColors.textMuted),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+      ),
+    );
+  }
+
+  Widget _buildBadges() {
+    return const ElimuCard(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Icon(Icons.star, color: Colors.amber, size: 32),
+          Icon(Icons.emoji_events, color: Colors.orange, size: 32),
+          Icon(Icons.workspace_premium, color: Colors.blue, size: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimetable() {
+    final timetable = [
+      ("7:30 AM", "Literacy"),
+      ("9:00 AM", "Mathematics"),
+      ("11:00 AM", "Science"),
+      ("1:00 PM", "Creative Arts"),
+    ];
+
+    if (timetable.isEmpty) {
+      return const ElimuCard(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Text(
+              "No timetable scheduled",
+              style: TextStyle(color: AppColors.textMuted),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: timetable.map((entry) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: ElimuCard(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.brandGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    entry.$1,
+                    style: const TextStyle(
+                      color: AppColors.brandGreen,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    entry.$2,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textMain,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppColors.textMuted),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildQuickAccessCard(
+    _QuickAccessAction action, {
+    bool compact = false,
+  }) {
+    return SizedBox(
+      width: compact ? 156 : null,
+      height: compact ? 132 : 126,
+      child: Stack(
+        children: [
+          ElimuCard(
+            padding: EdgeInsets.all(compact ? 10 : 12),
+            onTap: action.onTap,
+            backgroundColor: Colors.white,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(compact ? 10 : 12),
+                      decoration: BoxDecoration(
+                        color: action.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(action.icon,
+                          color: action.color, size: compact ? 22 : 24),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.arrow_outward_rounded,
+                      size: compact ? 16 : 18,
+                      color: AppColors.textMuted.withValues(alpha: 0.8),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  action.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: compact ? 11 : 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textMain,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Open ${action.title.toLowerCase()}",
+                  style: TextStyle(
+                    fontSize: compact ? 10 : 11,
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (action.badgeCount > 0)
+            Positioned(
+              right: 6,
+              top: 6,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.accentCoral,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                child: Text(
+                  action.badgeCount > 9 ? "9+" : action.badgeCount.toString(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _openMenuItem(List<MenuItem> menuItems) {
+    if (menuItems.isEmpty) return;
+    _onSelectItem(menuItems.first);
+  }
+
+  List<_QuickAccessAction> get _quickAccessActions => [
+        _QuickAccessAction(
+          title: 'My Learning Areas',
+          icon: Icons.menu_book_rounded,
+          color: AppColors.brandGreen,
+          badgeCount: 0,
+          onTap: () => _openMenuItem([
+            MenuItem(
+              id: 'learning_areas',
+              title: 'My Learning Areas',
+              icon: Icons.menu_book_rounded,
+            ),
+          ]),
+        ),
+        _QuickAccessAction(
+          title: 'Library',
+          icon: Icons.local_library_rounded,
+          color: AppColors.accentCoral,
+          badgeCount: 0,
+          onTap: () => widget.onNavigate(1),
+        ),
+        _QuickAccessAction(
+          title: 'Grade Book',
+          icon: Icons.assignment_turned_in_rounded,
+          color: AppColors.primaryBlue,
+          badgeCount: 3, // Mocking some pending assignments
+          onTap: _openGradeBook,
+        ),
+        _QuickAccessAction(
+          title: 'Interactive Books',
+          icon: Icons.laptop_mac_rounded,
+          color: AppColors.accentPurple,
+          badgeCount: 0,
+          onTap: () => _openMenuItem([
+            MenuItem(
+              id: 'interactive_books',
+              title: 'Interactive Books',
+              icon: Icons.laptop_mac_rounded,
+            ),
+          ]),
+        ),
+        _QuickAccessAction(
+          title: 'Leaderboard',
+          icon: Icons.emoji_events_rounded,
+          color: AppColors.accentYellow,
+          badgeCount: 0,
+          onTap: () => _openMenuItem([
+            MenuItem(
+              id: 'leaderboard',
+              title: 'Leaderboard',
+              icon: Icons.emoji_events_rounded,
+            ),
+          ]),
+        ),
+        _QuickAccessAction(
+          title: 'Elimu Quest',
+          icon: Icons.bolt_rounded,
+          color: AppColors.accentOrange,
+          badgeCount: 5, // Mocking new quests
+          onTap: () => widget.onNavigate(2),
+        ),
+        _QuickAccessAction(
+          title: 'More',
+          icon: Icons.menu_rounded,
+          color: AppColors.accentCoral,
+          badgeCount: 0,
+          onTap: () => widget.onNavigate(3),
+        ),
+      ];
+
+  Future<void> _openGradeBook() async {
+    final targetUrl = 'https://elimupepe.loholearning.co.ke/student/gradebook';
+    final webviewLoginUrl = await LearnerDashboardApiService.instance
+        .fetchWebviewLoginUrl(targetUrl: targetUrl);
+
+    if (!mounted) return;
+
+    if (webviewLoginUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open Grade Book right now.'),
+        ),
+      );
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            WebViewContentScreen(title: 'Grade Book', url: webviewLoginUrl),
+      ),
+    );
+  }
+
+  Widget _buildWeeklyGoalHero() {
+    final progressPercent = (_weeklyProgress * 100).round();
+
+    return ElimuCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.primaryBlue,
+                  AppColors.primaryBlue.withValues(alpha: 0.82),
+                ],
+              ),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.flag_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "WEEKLY GOAL",
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1,
+                              fontSize: 10,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _weeklyGoalTitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _buildHeroBadge("$progressPercent%"),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: const BorderRadius.all(Radius.circular(999)),
+                  child: LinearProgressIndicator(
+                    value: _weeklyProgress,
+                    minHeight: 12,
+                    backgroundColor: Colors.white24,
+                    color: AppColors.accentYellow,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _weeklyProgress >= 1.0
+                      ? "Congratulations! You reached your goal."
+                      : "Finish your activities to move this bar to 100%.",
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.86),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildGoalMeta(
+                    label: "Progress",
+                    value: "$progressPercent%",
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildGoalMeta(
+                    label: "Status",
+                    value: _weeklyProgress >= 1 ? "Complete" : "In progress",
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGoalMeta({
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceGray,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textMain,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPillarsGrid() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTablet = constraints.maxWidth >= 700;
+        final columns = isTablet
+            ? 2
+            : constraints.maxWidth >= 1000
+                ? 4
+                : constraints.maxWidth >= 800
+                    ? 3
+                    : 2;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: isTablet ? 14 : 16,
+            mainAxisSpacing: isTablet ? 14 : 16,
+            childAspectRatio: isTablet ? 1.9 : 1.08,
+          ),
+          itemCount: _featuredCoreLearningPillars.length,
+          itemBuilder: (context, index) {
+            return _buildPillarCard(
+              _featuredCoreLearningPillars[index],
+              isTablet: isTablet,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  List<Map<String, Object>> get _featuredCoreLearningPillars =>
+      _coreLearningPillars.take(4).toList();
+
+  List<Map<String, Object>> get _coreLearningPillars => [
+        {
+          "title": "Literacy",
+          "icon": Icons.menu_book_rounded,
+          "color": AppColors.primaryBlue,
+          "desc": "Communication skills in English, Kiswahili, and local languages.",
+        },
+        {
+          "title": "Mathematics",
+          "icon": Icons.calculate_rounded,
+          "color": AppColors.accentPurple,
+          "desc": "Focusing on logical thinking and problem-solving.",
+        },
+        {
+          "title": "Science and Technology",
+          "icon": Icons.biotech_rounded,
+          "color": AppColors.brandGreen,
+          "desc": "Nature, experimentation, and digital literacy.",
+        },
+        {
+          "title": "Social Studies",
+          "icon": Icons.public_rounded,
+          "color": AppColors.accentOrange,
+          "desc": "Citizenship, geography, history, and community life.",
+        },
+        {
+          "title": "Creative Arts & Sports",
+          "icon": Icons.palette_rounded,
+          "color": AppColors.accentYellow,
+          "desc": "Performing arts, visual arts, and PE.",
+        },
+        {
+          "title": "Religious Education",
+          "icon": Icons.church_rounded,
+          "color": AppColors.primaryBlue,
+          "desc": "CRE, IRE, and HRE for values and growth.",
+        },
+        {
+          "title": "Agriculture and Nutrition",
+          "icon": Icons.agriculture_rounded,
+          "color": AppColors.brandGreen,
+          "desc": "Food production and healthy living skills.",
+        },
+        {
+          "title": "Life Skills Education",
+          "icon": Icons.psychology_rounded,
+          "color": AppColors.accentPurple,
+          "desc": "Self-awareness and social-emotional growth.",
+        },
+      ];
+
+  Widget _buildPillarCard(
+    Map<String, Object> p, {
+    bool isTablet = false,
+  }) {
+    return ElimuCard(
+      padding: EdgeInsets.all(isTablet ? 14 : 12),
+      onTap: () => widget.onNavigate(1),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isTablet)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        p['title'] as String,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: AppColors.textMain,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        p['desc'] as String,
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: (p['color'] as Color).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Icon(
+                    p['icon'] as IconData,
+                    color: p['color'] as Color,
+                    size: 28,
+                  ),
+                ),
+              ],
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isTablet ? 10 : 12),
+                  decoration: BoxDecoration(
+                    color: (p['color'] as Color).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    p['icon'] as IconData,
+                    color: p['color'] as Color,
+                    size: isTablet ? 24 : 28,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        p['title'] as String,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: isTablet ? 13 : 14,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        p['desc'] as String,
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: isTablet ? 10 : 11,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAllPillars() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceGray,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: AppColors.darkGray.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "All Core Learning Pillars",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textMain,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: GridView.builder(
+                          controller: scrollController,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 1.15,
+                          ),
+                          itemCount: _coreLearningPillars.length,
+                          itemBuilder: (context, index) {
+                            return _buildPillarCard(
+                              _coreLearningPillars[index],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildWeeklySummaryFeed() {
+    return Column(
+      children: [
+        _buildSummaryAccordion(
+          "Key Inquiry Question",
+          "How do we conserve water in our community?",
+          Icons.help_outline_rounded,
+        ),
+        const SizedBox(height: 12),
+        _buildSummaryAccordion(
+          "Core Competencies",
+          "This week we focused on Collaboration and Critical Thinking through group experiments.",
+          Icons.psychology_rounded,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryAccordion(String title, String content, IconData icon) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: ExpansionTile(
+        backgroundColor: Colors.white,
+        collapsedBackgroundColor: Colors.white,
+        leading: Icon(icon, color: AppColors.primaryBlue),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textMain,
+          ),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Text(
+              content,
+              style: const TextStyle(color: AppColors.textMuted, height: 1.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParentTipSection() {
+    return ElimuCard(
+      backgroundColor: AppColors.accentYellow.withValues(alpha: 0.1),
+      borderColor: AppColors.accentYellow.withValues(alpha: 0.3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "PARENT'S TIP OF THE DAY",
+            style: TextStyle(
+              color: AppColors.accentOrange,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Ask your child to show you how they can save water while brushing their teeth today!",
+            style: TextStyle(
+              color: AppColors.textMain,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(
+    String title, {
+    VoidCallback? onTap,
+    Widget? trailing,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.brandGreen,
+            ),
+          ),
+        ),
+        if (trailing != null) ...[
+          trailing,
+          const SizedBox(width: 4),
+        ],
+        if (onTap != null)
+          InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              child: Text(
+                "See All",
+                style: TextStyle(
+                  color: AppColors.primaryBlue,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSectionBadge(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.brandGreen.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.brandGreen,
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroBadge(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+
+}
+
+class _QuickAccessAction {
+  _QuickAccessAction({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.badgeCount = 0,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  final int badgeCount;
+}
+
+// --- CUSTOM PAINTER FOR CIRCULAR CHART ---
+class RingProgressPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  RingProgressPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokeWidth = 8.0;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    final bgPaint = Paint()
+      ..color = color.withValues(alpha: 0.1)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+
+    final pgPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, bgPaint);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * progress,
+      false,
+      pgPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}

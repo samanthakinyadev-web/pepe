@@ -10,6 +10,7 @@ import 'package:elimupepe/core/utils/image_url_resolver.dart';
 import 'package:elimupepe/core/services/user_data_service.dart';
 import 'package:elimupepe/features/parental_control/parental_gate.dart';
 import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 
 class UpdateProfileScreen extends StatefulWidget {
   const UpdateProfileScreen({super.key});
@@ -94,46 +95,51 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       'email': _emailController.text.trim(),
     });
 
-    if (mounted) {
-      if (success) {
-        final prefs = await SharedPreferences.getInstance();
-        final avatarCacheKey = DateTime.now().millisecondsSinceEpoch.toString();
-        final refreshedAvatar = ImageUrlResolver.withCacheBuster(
-          _selectedAvatar,
-          cacheKey: avatarCacheKey,
-        );
-
-        await prefs.setString(
-          'profile_image_url',
-          refreshedAvatar ?? _selectedAvatar,
-        );
-        await prefs.setString(
-          'user_avatar',
-          refreshedAvatar ?? _selectedAvatar,
-        );
-        await prefs.setString(_avatarCacheKeyPref, avatarCacheKey);
-        await prefs.setString('user_name', _nameController.text.trim());
-        await prefs.setString('user_email', _emailController.text.trim());
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update profile. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    if (!mounted) {
+      return;
     }
+
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     setState(() {
       _isSaving = false;
     });
+
+    if (success) {
+      final prefs = await SharedPreferences.getInstance();
+      final avatarCacheKey = DateTime.now().millisecondsSinceEpoch.toString();
+      final refreshedAvatar = ImageUrlResolver.withCacheBuster(
+        _selectedAvatar,
+        cacheKey: avatarCacheKey,
+      );
+
+      await prefs.setString(
+        'profile_image_url',
+        refreshedAvatar ?? _selectedAvatar,
+      );
+      await prefs.setString(
+        'user_avatar',
+        refreshedAvatar ?? _selectedAvatar,
+      );
+      await prefs.setString(_avatarCacheKeyPref, avatarCacheKey);
+      await prefs.setString('user_name', _nameController.text.trim());
+      await prefs.setString('user_email', _nameController.text.trim());
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      navigator.pop();
+    } else {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Failed to update profile. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
     // This was a fire-and-forget call, which is not ideal.
     /* UserDataService.instance.updateProfile({
         'avatar': _selectedAvatar,
@@ -190,21 +196,21 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to upload avatar. Please try again.'),
-              backgroundColor: Colors.red,
-            ),
+          await ErrorFeedback.showErrorDialog(
+            context,
+            title: 'Avatar upload failed',
+            error: 'Please check your network connection and try again.',
+            fallback: 'Failed to upload avatar. Please try again.',
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error uploading avatar: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        await ErrorFeedback.showErrorDialog(
+          context,
+          title: 'Avatar upload failed',
+          error: e,
+          fallback: 'Failed to upload avatar. Please try again.',
         );
       }
     } finally {

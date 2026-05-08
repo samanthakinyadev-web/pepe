@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:elimupepe/features/auth/welcome_screen.dart';
 import 'package:elimupepe/features/home/dashboard_screen.dart';
 import 'package:elimupepe/features/parental_control/parent_dashboard.dart';
@@ -23,28 +24,48 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _resolveHome() async {
-    final auth = AuthService.instance;
-    final loggedIn = await auth.isLoggedIn();
+    try {
+      final auth = AuthService.instance;
+      final loggedIn = await auth.isLoggedIn();
 
-    if (!loggedIn) {
+      if (!loggedIn) {
+        await SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
+        ]);
+        if (mounted) {
+          setState(() => _home = const WelcomeScreen());
+        }
+        return;
+      }
+
+      int? roleId = await auth.getSavedRoleId();
+      String? roleName = await auth.getSavedRoleName();
+
+      if (roleId == null && (roleName == null || roleName.isEmpty)) {
+        final user = await auth.getCurrentUser();
+        roleId = _extractRoleId(user);
+        roleName = _extractRoleName(user);
+      }
+
+      final destination = _routeForRole(roleId, roleName);
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      if (mounted) {
+        setState(() => _home = destination);
+      }
+    } catch (_) {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
       if (mounted) {
         setState(() => _home = const WelcomeScreen());
       }
-      return;
-    }
-
-    int? roleId = await auth.getSavedRoleId();
-    String? roleName = await auth.getSavedRoleName();
-
-    if (roleId == null && (roleName == null || roleName.isEmpty)) {
-      final user = await auth.getCurrentUser();
-      roleId = _extractRoleId(user);
-      roleName = _extractRoleName(user);
-    }
-
-    final destination = _routeForRole(roleId, roleName);
-    if (mounted) {
-      setState(() => _home = destination);
     }
   }
 
@@ -86,7 +107,10 @@ class _AuthGateState extends State<AuthGate> {
       return const ParentDashboard();
     }
 
-    return const GamifiedDashboardScreen();
+    return const GamifiedDashboardScreen(
+      initialIndex: 0,
+      restoreLastTab: false,
+    );
   }
 
   @override

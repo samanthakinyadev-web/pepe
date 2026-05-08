@@ -59,7 +59,7 @@ class CloudSyncServicePhp {
       for (final localBook in localBooks) {
         final isBundledBook = localBook.id.toLowerCase().endsWith('.pdf');
         if (isBundledBook) {
-          await deleteDownloadedBook(localBook.id);
+          await _deleteBookRecord(localBook);
         }
       }
     } catch (e) {
@@ -216,40 +216,42 @@ class CloudSyncServicePhp {
       }
 
       final book = localBooks[bookIndex];
-
-      // Delete PDF file if exists
-      if (book.localPath != null && book.localPath!.isNotEmpty) {
-        try {
-          final pdfFile = File(book.localPath!);
-          if (await pdfFile.exists()) {
-            await pdfFile.delete();
-            print('Deleted PDF: ${book.localPath}');
-          }
-        } catch (e) {
-          print('Error deleting PDF file: $e');
-        }
-      }
-
-      // Delete thumbnail if exists
-      if (book.coverImagePath != null && book.coverImagePath!.isNotEmpty) {
-        try {
-          final thumbnailFile = File(book.coverImagePath!);
-          if (await thumbnailFile.exists()) {
-            await thumbnailFile.delete();
-            print('Deleted thumbnail: ${book.coverImagePath}');
-          }
-        } catch (e) {
-          print('Error deleting thumbnail: $e');
-        }
-      }
-
-      // Remove from database (always do this even if file deletion fails)
-      await _databaseService.deleteEbook(bookId);
-      print('Removed from database: $bookId');
-      return true;
+      return _deleteBookRecord(book);
     } catch (e) {
       print('Error deleting book: $e');
       return false;
     }
+  }
+
+  Future<bool> _deleteBookRecord(Ebook book) async {
+    // Delete PDF file if present.
+    if (book.localPath != null && book.localPath!.isNotEmpty) {
+      try {
+        final pdfFile = File(book.localPath!);
+        if (await pdfFile.exists()) {
+          await pdfFile.delete();
+          print('Deleted PDF: ${book.localPath}');
+        }
+      } catch (e) {
+        print('Error deleting PDF file: $e');
+      }
+    }
+
+    // Delete thumbnail if present.
+    if (book.coverImagePath != null && book.coverImagePath!.isNotEmpty) {
+      try {
+        final thumbnailFile = File(book.coverImagePath!);
+        if (await thumbnailFile.exists()) {
+          await thumbnailFile.delete();
+          print('Deleted thumbnail: ${book.coverImagePath}');
+        }
+      } catch (e) {
+        print('Error deleting thumbnail: $e');
+      }
+    }
+
+    await _databaseService.deleteEbook(book.id);
+    print('Removed from database: ${book.id}');
+    return true;
   }
 }

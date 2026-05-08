@@ -4,7 +4,7 @@ description: "Elimu Pepe - Secure CBC Learning App for Smart Learning."
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
-version: 1.2.8+8
+version: 1.2.8+13
 
 environment:
   sdk: ^3.10.7
@@ -50,6 +50,8 @@ dependencies:
   firebase_core: ^3.8.1
   cloud_firestore: ^5.5.1
   firebase_analytics: ^11.5.0
+  firebase_crashlytics: ^4.3.10
+  firebase_performance: ^0.10.1+10
   url_launcher: ^6.3.1
   webview_flutter: ^4.10.0
   flutter_slider_drawer: ^2.1.2
@@ -62,6 +64,7 @@ dependencies:
   font_awesome_flutter: ^10.7.0
   flutter_animate: ^4.5.0 # For animations
   image_picker: ^1.1.2
+  connectivity_plus: ^6.1.5
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -103,6 +106,7 @@ flutter:
   assets:
     - assets/images/
     - assets/ebooks/
+    - assets/offline/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

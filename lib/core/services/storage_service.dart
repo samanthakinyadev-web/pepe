@@ -128,6 +128,9 @@ class StorageService {
   }) async {
     try {
       final ebooksDir = await getEbooksDirectory();
+      final existingBooks = {
+        for (final ebook in await databaseService.getAllEbooks()) ebook.id,
+      };
 
       // Define all known PDFs by grade
       final Map<int, List<String>> gradeBooks = {
@@ -173,6 +176,13 @@ class StorageService {
         for (final fileName in pdfFiles) {
           final assetPath = 'assets/ebooks/grade$gradeNum/$fileName';
           final destination = File(p.join(ebooksDir.path, fileName));
+
+          // Skip work that already exists. The database check avoids reloading
+          // the asset on every launch, while the file check lets us restore a
+          // missing file if the database entry survived but storage did not.
+          if (existingBooks.contains(fileName) && await destination.exists()) {
+            continue;
+          }
 
           // Copy asset to app storage
           try {

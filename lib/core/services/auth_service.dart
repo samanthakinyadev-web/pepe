@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:elimupepe/core/config/app_endpoints.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:elimupepe/core/services/webview_session_service.dart';
 
@@ -156,9 +157,18 @@ class AuthService {
       );
     } on DioException catch (e) {
       final serverMessage = _extractErrorMessage(e.response?.data);
+      final friendlyMessage = ErrorFeedback.userMessage(
+        e,
+        fallback: 'Could not connect to login server.',
+      );
+
+      if (ErrorFeedback.isNetworkError(e) || ErrorFeedback.isServerError(e)) {
+        return LoginResult(success: false, message: friendlyMessage);
+      }
+
       return LoginResult(
         success: false,
-        message: serverMessage ?? 'Could not connect to login server.',
+        message: serverMessage ?? friendlyMessage,
       );
     } catch (_) {
       return const LoginResult(

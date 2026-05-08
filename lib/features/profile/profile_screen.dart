@@ -12,6 +12,7 @@ import 'package:elimupepe/features/settings/notifications_screen.dart';
 import 'package:elimupepe/features/parental_control/parental_gate.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -47,10 +48,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     if (webviewLoginUrl == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open this area securely. Please try again.'),
-        ),
+      await ErrorFeedback.showErrorDialog(
+        context,
+        title: 'Secure access unavailable',
+        error: 'Please check your network connection and try again.',
+        fallback: 'Could not open this area securely. Please try again.',
       );
       return;
     }
@@ -98,7 +100,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       UserDataService.instance.fetchWallet(),
     ]);
 
-    final apiData = futures[0] as Map<String, dynamic>?;
+    final apiData = futures[0] is Map<String, dynamic>
+        ? futures[0] as Map<String, dynamic>
+        : null;
     if (apiData != null && mounted) {
       final userData = apiData['data'] ?? apiData['user'] ?? apiData;
 
@@ -156,7 +160,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await prefs.setString('points', _points);
     }
 
-    final isSubStatus = futures[1] as bool;
+    final isSubStatus = futures[1] is bool ? futures[1] as bool : false;
     if (mounted) {
       setState(() {
         _isSubscribed = isSubStatus;
@@ -164,7 +168,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await prefs.setBool('is_subscribed', _isSubscribed);
     }
 
-    final grades = futures[2] as List<dynamic>?;
+    final grades = futures[2] is List ? futures[2] as List<dynamic> : null;
     if (mounted && grades != null) {
       setState(() {
         _quests = grades.length.toString();
@@ -175,7 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await prefs.setString('books', _books);
     }
 
-    final badges = futures[4] as List<dynamic>? ?? [];
+    final badges = futures[4] is List ? futures[4] as List<dynamic> : [];
     if (mounted) {
       setState(() {
         _badges = badges
@@ -186,7 +190,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
 
-    final wallet = futures[5] as Map<String, dynamic>?;
+    final wallet = futures[5] is Map<String, dynamic>
+        ? futures[5] as Map<String, dynamic>
+        : null;
     final walletPoints = _readInt([
       wallet?['balance'],
       wallet?['coins'],
@@ -200,7 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     // 5. Fetch recent notifications
-    final notifications = futures[3] as List<dynamic>?;
+    final notifications = futures[3] is List ? futures[3] as List<dynamic> : null;
     if (mounted && notifications != null) {
       setState(() {
         _recentNotifications = notifications.take(2).toList();

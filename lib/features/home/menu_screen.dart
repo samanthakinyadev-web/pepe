@@ -7,6 +7,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:elimupepe/features/home/category_items_screen.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key});
@@ -23,12 +24,11 @@ class MenuScreen extends StatelessWidget {
       if (!context.mounted) return;
 
       if (webviewLoginUrl == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Could not open this area securely. Please try again.',
-            ),
-          ),
+        await ErrorFeedback.showErrorDialog(
+          context,
+          title: 'Secure access unavailable',
+          error: 'Please check your network connection and try again.',
+          fallback: 'Could not open this area securely. Please try again.',
         );
         return;
       }

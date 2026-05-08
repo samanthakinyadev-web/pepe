@@ -73,6 +73,12 @@ class LearnerDashboardApiService {
   Future<List<dynamic>> fetchMilestones() =>
       _fetchAuthorizedCollection('/student/milestones');
 
+  Future<List<dynamic>> fetchCompetencies() =>
+      _fetchAuthorizedCollection('/student/competencies');
+
+  Future<Map<String, dynamic>?> fetchWeeklyGoal() =>
+      _fetchAuthorizedMap('/student/weekly-goal');
+
   Future<List<dynamic>> fetchBadges() =>
       _fetchAuthorizedCollection('/student/badges');
 
@@ -797,24 +803,34 @@ class LearnerDashboardApiService {
 
   List<dynamic> _extractItems(dynamic data) {
     if (data is List) {
-      return data;
+      return data
+          .where((item) => item is Map<String, dynamic> || item is Map)
+          .toList();
     }
 
     if (data is Map<String, dynamic>) {
       final bodyData = data['data'];
       if (bodyData is List) {
-        return bodyData;
+        return bodyData
+            .where((item) => item is Map<String, dynamic> || item is Map)
+            .toList();
       }
 
       if (bodyData is Map<String, dynamic>) {
-        if (bodyData['books'] is List) {
-          return bodyData['books'] as List<dynamic>;
+        final books = bodyData['books'];
+        if (books is List) {
+          return books
+              .where((item) => item is Map<String, dynamic> || item is Map)
+              .toList();
         }
         return [bodyData];
       }
 
-      if (data['books'] is List) {
-        return data['books'] as List<dynamic>;
+      final books = data['books'];
+      if (books is List) {
+        return books
+            .where((item) => item is Map<String, dynamic> || item is Map)
+            .toList();
       }
     }
 
@@ -939,8 +955,14 @@ class LearnerDashboardApiService {
       return data;
     }
 
-    if (data is List && data.isNotEmpty && data.first is Map<String, dynamic>) {
-      return data.first as Map<String, dynamic>;
+    if (data is List && data.isNotEmpty) {
+      final first = data.first;
+      if (first is Map<String, dynamic>) {
+        return first;
+      }
+      if (first is Map) {
+        return Map<String, dynamic>.from(first);
+      }
     }
 
     return null;
@@ -980,7 +1002,13 @@ Map<String, dynamic>? _extractMapPayload(dynamic data) {
   }
 
   if (data is List && data.isNotEmpty && data.first is Map<String, dynamic>) {
-    return Map<String, dynamic>.from(data.first as Map);
+    final first = data.first;
+    if (first is Map<String, dynamic>) {
+      return first;
+    }
+    if (first is Map) {
+      return Map<String, dynamic>.from(first);
+    }
   }
 
   return null;

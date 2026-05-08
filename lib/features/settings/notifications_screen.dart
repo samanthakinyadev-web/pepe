@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:elimupepe/core/services/user_data_service.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -38,8 +39,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         setState(() {
           _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load notifications: $e')),
+        await ErrorFeedback.showErrorDialog(
+          context,
+          title: 'Notifications unavailable',
+          error: e,
         );
       }
     }
@@ -63,9 +66,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        await ErrorFeedback.showErrorDialog(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to mark as read: $e')));
+          title: 'Could not update notifications',
+          error: e,
+        );
       }
     }
   }
@@ -148,11 +153,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               itemCount: _notifications.length,
               itemBuilder: (context, index) {
                 final notification = _notifications[index];
+                final notificationMap = notification is Map<String, dynamic>
+                    ? notification
+                    : <String, dynamic>{};
                 // Safely check if a notification is read/unread depending on your API structure
-                final isUnread = notification['is_read'] == false;
-                final uniqueKeyId =
-                    notification is Map && notification.containsKey('id')
-                    ? notification['id'].toString()
+                final isUnread = notificationMap['is_read'] == false;
+                final uniqueKeyId = notificationMap.containsKey('id')
+                    ? notificationMap['id'].toString()
                     : notification.hashCode.toString();
 
                 return Dismissible(
@@ -215,7 +222,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      notification['title'] ?? 'Notification',
+                                      notificationMap['title'] ??
+                                          'Notification',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
@@ -229,7 +237,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    notification['time'] ?? '',
+                                    notificationMap['time'] ?? '',
                                     style: TextStyle(
                                       color: isUnread
                                           ? AppColors.lightGreen
@@ -244,7 +252,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                notification['message'] ?? '',
+                                notificationMap['message'] ?? '',
                                 maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(

@@ -3,8 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:elimupepe/models/ebook.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as path;
-import 'package:elimupepe/core/services/storage_service.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 
 class ReaderScreen extends StatefulWidget {
   final Ebook ebook;
@@ -57,7 +56,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = ErrorFeedback.userMessage(e);
         _isLoading = false;
       });
     }
@@ -66,10 +65,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   void dispose() {
     _pdfController?.dispose();
-    // Revert back to portrait only when leaving the reader
+    // Return the app to the default post-login autorotate behavior.
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
     ]);
     super.dispose();
   }
@@ -88,38 +89,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error loading PDF',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      _error!,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _isLoading = true;
-                        _error = null;
-                      });
-                      _initializePdf();
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
+          ? ErrorFeedback.buildInlineError(
+              context: context,
+              title: 'Error loading PDF',
+              error: _error,
+              onRetry: () {
+                setState(() {
+                  _isLoading = true;
+                  _error = null;
+                });
+                _initializePdf();
+              },
             )
           : Column(
               children: [

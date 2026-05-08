@@ -9,6 +9,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/widgets/elimu_card.dart';
 import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:elimupepe/features/home/main_view.dart';
 import 'package:elimupepe/features/home/home_screen.dart';
 import 'package:elimupepe/features/home/menu_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,9 +18,17 @@ import 'package:elimupepe/features/profile/profile_screen.dart';
 import 'package:elimupepe/features/parental_control/parental_gate.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 
 class GamifiedDashboardScreen extends StatefulWidget {
-  const GamifiedDashboardScreen({super.key});
+  const GamifiedDashboardScreen({
+    super.key,
+    this.initialIndex = 0,
+    this.restoreLastTab = true,
+  });
+
+  final int initialIndex;
+  final bool restoreLastTab;
 
   @override
   State<GamifiedDashboardScreen> createState() =>
@@ -28,7 +37,7 @@ class GamifiedDashboardScreen extends StatefulWidget {
 
 class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
   static const String _avatarCacheKeyPref = 'profile_image_cache_key';
-  int _selectedIndex = 0; // 0: Home, 1: Quest, 2: Library, 3: Menu, 4: Profile
+  int _selectedIndex = 0; // 0: Home, 1: Library, 2: Quest, 3: Menu, 4: Profile
   final GlobalKey<ScaffoldState> _homeScaffoldKey = GlobalKey<ScaffoldState>();
   final List<Widget?> _tabCache = List<Widget?>.filled(5, null);
   String _userName = 'Learner';
@@ -55,7 +64,9 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        _selectedIndex = prefs.getInt('last_dashboard_tab_index') ?? 0;
+        _selectedIndex = widget.restoreLastTab
+            ? prefs.getInt('last_dashboard_tab_index') ?? widget.initialIndex
+            : widget.initialIndex;
         _userName = prefs.getString('user_name') ?? 'Learner';
         _userAvatar = ImageUrlResolver.withCacheBuster(
           prefs.getString('profile_image_url') ??
@@ -67,61 +78,11 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
   }
 
   Future<void> _onItemTapped(int index) async {
-    if (index == 0) {
-      await _openStudentDashboardWebView();
-      return;
-    }
-
     setState(() {
       _selectedIndex = index;
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('last_dashboard_tab_index', index);
-  }
-
-  Future<void> _openStudentDashboardWebView() async {
-    if (_isOpeningStudentDashboard) {
-      return;
-    }
-
-    setState(() {
-      _isOpeningStudentDashboard = true;
-    });
-    try {
-      final targetUrl = '${AppEndpoints.webBaseUrl}/student-dashboard';
-      final webviewLoginUrl = await LearnerDashboardApiService.instance
-          .fetchWebviewLoginUrl(targetUrl: targetUrl);
-
-      if (!mounted) {
-        return;
-      }
-
-      if (webviewLoginUrl == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Could not open the student dashboard securely. Please try again.',
-            ),
-          ),
-        );
-        return;
-      }
-
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => WebViewContentScreen(
-            title: 'Student Dashboard',
-            url: webviewLoginUrl,
-          ),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isOpeningStudentDashboard = false;
-        });
-      }
-    }
   }
 
   Future<void> _openProtectedWebView({
@@ -144,12 +105,11 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       }
 
       if (webviewLoginUrl == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Could not open this area securely. Please try again.',
-            ),
-          ),
+        await ErrorFeedback.showErrorDialog(
+          context,
+          title: 'Secure access unavailable',
+          error: 'Please check your network connection and try again.',
+          fallback: 'Could not open this area securely. Please try again.',
         );
         return;
       }
@@ -228,7 +188,7 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
         ),
         if (_isOpeningStudentDashboard)
           Container(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             child: const Center(
               child: CircularProgressIndicator(color: AppColors.lightGreen),
             ),
@@ -240,7 +200,7 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
   Widget _buildTab(int index) {
     switch (index) {
       case 0:
-        return const MenuScreen();
+        return MainView(onNavigate: _onItemTapped);
       case 1:
         return HomeScreen(scaffoldKey: _homeScaffoldKey);
       case 2:
@@ -773,19 +733,20 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () async {
+                  if (!mounted) return;
+                  final messenger = ScaffoldMessenger.of(context);
                   final passed = await showParentalGate(context);
+                  if (!mounted) return;
                   if (!passed) return;
 
                   final uri = Uri.tryParse(downloadUrl);
                   if (uri == null || !_isValidUpdateUrl(downloadUrl)) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Update URL is invalid or untrusted.'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Update URL is invalid or untrusted.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
                     return;
                   }
 

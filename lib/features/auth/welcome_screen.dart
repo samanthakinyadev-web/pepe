@@ -3,6 +3,7 @@ import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:elimupepe/core/theme/app_page_transitions.dart';
 import 'package:elimupepe/core/widgets/elimu_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -14,6 +15,21 @@ class WelcomeScreen extends StatefulWidget {
 class _WelcomeScreenState extends State<WelcomeScreen> {
   final PageController _controller = PageController();
   int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   void _navigateToLogin() {
     Navigator.of(
@@ -221,7 +237,12 @@ class _WelcomePageState extends State<WelcomePage>
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 180), // Added large bottom padding to avoid controls
+      padding: const EdgeInsets.fromLTRB(
+        24,
+        24,
+        24,
+        180,
+      ), // Added large bottom padding to avoid controls
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

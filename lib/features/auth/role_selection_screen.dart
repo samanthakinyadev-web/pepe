@@ -21,7 +21,7 @@ Future<void> _launchWhatsApp(BuildContext context) async {
 }
 
 Future<void> _launchWebsite(BuildContext context) async {
-  final Uri url = Uri.parse('${AppEndpoints.webBaseUrl}/subscribe');
+  final Uri url = Uri.parse('${AppEndpoints.webBaseUrl}');
   if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
     if (context.mounted) {
       ScaffoldMessenger.of(
@@ -83,10 +83,10 @@ class RoleSelectionScreen extends StatelessWidget {
                       children: [
                         const Expanded(
                           child: Text(
-                            'To get started:\n\n'
-                            '1️⃣ Visit our website\n'
-                            '2️⃣ Create an account\n'
-                            '3️⃣ Then log in and continue learning 🎉\n\n'
+                            'Student Access Only\n\n'
+                            '1️⃣ Register on the website.\n'
+                            '2️⃣ Get your login details.\n'
+                            '3️⃣ Sign in here 🎉\n\n'
                             '✅ Quick and easy!',
 
                             style: TextStyle(

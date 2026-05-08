@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:elimupepe/core/services/user_data_service.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 
 class GradebookScreen extends StatefulWidget {
   const GradebookScreen({super.key});
@@ -38,7 +39,7 @@ class _GradebookScreenState extends State<GradebookScreen> {
       // a user-friendly message.
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = ErrorFeedback.userMessage(e);
         _isLoading = false;
       });
     }
@@ -79,22 +80,13 @@ class _GradebookScreenState extends State<GradebookScreen> {
             : _error != null
             ? ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(24),
                 children: [
-                  const SizedBox(height: 120),
-                  const Icon(
-                    Icons.error_outline,
-                    size: 56,
-                    color: Colors.redAccent,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _error!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.textMain,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                  ErrorFeedback.buildInlineError(
+                    context: context,
+                    title: 'Grade book unavailable',
+                    error: _error,
+                    onRetry: _loadGradebook,
                   ),
                 ],
               )
