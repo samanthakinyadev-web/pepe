@@ -584,7 +584,7 @@ class _MainViewState extends State<MainView> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.accentOrange, AppColors.accentOrange],
+            colors: [AppColors.brandGreen, AppColors.brandGreen],
           ),
           borderRadius: BorderRadius.circular(24),
         ),

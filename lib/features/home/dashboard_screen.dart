@@ -155,7 +155,7 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
             type: BottomNavigationBarType.fixed,
-            selectedItemColor: AppColors.lightGreen,
+            selectedItemColor: AppColors.accentCoral,
             unselectedItemColor: Colors.blueGrey.shade300,
             items: const [
               BottomNavigationBarItem(

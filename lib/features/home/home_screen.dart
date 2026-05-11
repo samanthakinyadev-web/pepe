@@ -586,6 +586,70 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<void> _confirmDeleteDownloadedBook(Ebook book) async {
+    if (!book.isDownloaded) return;
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete downloaded book?'),
+          content: Text(
+            'This will remove "${book.title}" from your device and downloaded library.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      await _deleteDownloadedBook(book);
+    }
+  }
+
+  Future<void> _deleteDownloadedBook(Ebook book) async {
+    try {
+      final success = await _cloudSyncService.deleteDownloadedBook(book.id);
+
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted: ${book.title}'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        await _loadEbooks();
+        await _loadCloudBooks();
+      } else {
+        await _showActionError(
+          'The book could not be deleted. Please try again.',
+          title: 'Delete failed',
+          fallback: 'The book could not be deleted. Please try again.',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      await _showActionError(
+        e,
+        title: 'Delete failed',
+        fallback: 'The book could not be deleted. Please try again.',
+      );
+    }
+  }
+
   Future<void> _handleCategoryTap(MenuItem item) async {
     if (item.isComingSoon) return;
 
@@ -1083,6 +1147,17 @@ class _HomeScreenState extends State<HomeScreen>
         .toList();
   }
 
+  bool _isRecommendedForLearner(Ebook book, String? learnerCourse) {
+    if (learnerCourse == null || learnerCourse.isEmpty) {
+      return false;
+    }
+
+    final normalizedLearnerCourse = _normalizeGrade(learnerCourse);
+    return book.category == learnerCourse ||
+        book.grade == learnerCourse ||
+        _normalizeGrade(book.grade) == normalizedLearnerCourse;
+  }
+
   List<Ebook> _dedupeBooks(List<Ebook> books) {
     final seen = <String>{};
     final deduped = <Ebook>[];
@@ -1410,6 +1485,11 @@ class _HomeScreenState extends State<HomeScreen>
     final isDownloading = _downloadProgress.containsKey(book.id);
     final progressNotifier = _downloadProgress[book.id];
     final isDownloaded = book.isDownloaded;
+    final learnerCourse =
+        _learnerGrade ??
+        _selectedCourse ??
+        (_studentCourses.isNotEmpty ? _studentCourses.first : null);
+    final isRecommended = _isRecommendedForLearner(book, learnerCourse);
 
     // In this project, we align with the reference project where
     // cloud cover URLs are stored in coverImagePath for cloud books.
@@ -1501,11 +1581,54 @@ class _HomeScreenState extends State<HomeScreen>
                     style: const TextStyle(fontSize: 12, color: Colors.black54),
                   ),
 
+                  if (isRecommended) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.lightGreen.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: AppColors.lightGreen.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.star_rounded,
+                              size: 14,
+                              color: AppColors.lightGreen,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Recommended',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.brandGreen,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: !isDownloaded
-                        ? (isDownloading && progressNotifier != null
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isCompactActionLayout = constraints.maxWidth < 180;
+
+                      if (!isDownloaded) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: isDownloading && progressNotifier != null
                               ? ListenableBuilder(
                                   listenable: progressNotifier,
                                   builder: (context, child) {
@@ -1536,20 +1659,74 @@ class _HomeScreenState extends State<HomeScreen>
                                   text: 'Download',
                                   icon: Icons.download,
                                   onPressed: () => _downloadBook(book),
-                                ))
-                        : ElimuButton(
-                            text: 'Read',
-                            icon: Icons.menu_book,
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      ReaderScreen(ebook: book),
                                 ),
-                              );
-                            },
+                        );
+                      }
+
+                      if (isCompactActionLayout) {
+                        return Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElimuButton(
+                                text: 'Read',
+                                icon: Icons.menu_book,
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          ReaderScreen(ebook: book),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElimuButton(
+                                text: 'Delete',
+                                icon: Icons.delete_outline_rounded,
+                                type: ElimuButtonType.outline,
+                                onPressed: () =>
+                                    _confirmDeleteDownloadedBook(book),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: ElimuButton(
+                              text: 'Read',
+                              icon: Icons.menu_book,
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        ReaderScreen(ebook: book),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: ElimuButton(
+                              text: 'Delete',
+                              icon: Icons.delete_outline_rounded,
+                              type: ElimuButtonType.outline,
+                              onPressed: () =>
+                                  _confirmDeleteDownloadedBook(book),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),

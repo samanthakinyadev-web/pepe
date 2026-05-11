@@ -69,6 +69,12 @@ class _ElimuButtonState extends State<ElimuButton> {
   @override
   Widget build(BuildContext context) {
     final isDisabled = widget.onPressed == null || widget.isLoading;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final buttonFontSize = screenWidth < 360
+        ? 13.5
+        : screenWidth < 400
+        ? 15.0
+        : 18.0;
 
     return GestureDetector(
       onTapDown: isDisabled ? null : (_) => setState(() => _isPressed = true),
@@ -122,9 +128,8 @@ class _ElimuButtonState extends State<ElimuButton> {
                       widget.text,
                       style: TextStyle(
                         color: _foregroundColor,
-                        fontSize: 18,
-                        fontWeight:
-                            FontWeight.w800, // Extra bold for playfulness
+                        fontSize: buttonFontSize,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ],
