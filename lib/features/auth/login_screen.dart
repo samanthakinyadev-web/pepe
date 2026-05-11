@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/theme/wave_clipper.dart';
 import 'package:elimupepe/core/widgets/elimu_button.dart';
+import 'package:elimupepe/core/utils/error_feedback.dart';
 import 'package:elimupepe/core/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/core/widgets/elimu_text_field.dart';
 import 'package:elimupepe/features/home/dashboard_screen.dart';
 import 'package:elimupepe/core/services/analytics_service.dart';
 import 'package:elimupepe/core/theme/app_page_transitions.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 import 'package:elimupepe/features/teacher/teacher_dashboard.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/features/parental_control/parent_dashboard.dart';
-import 'package:elimupepe/core/utils/error_feedback.dart';
-import 'package:flutter/services.dart';
-import 'package:firebase_performance/firebase_performance.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

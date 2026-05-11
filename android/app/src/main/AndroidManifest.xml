@@ -1,12 +1,14 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
     <!-- Required permissions for ebook reading and storage -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Required by Firebase Analytics and other Firebase SDKs for network state checks -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Required by Firebase Analytics -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- Google Play Services AD_ID permission for Firebase Analytics -->
-    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+    
+    <!-- Forcefully remove AD_ID permission injected by Firebase Analytics for kids app compliance -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
     
     <application
         android:label="Elimu Pepe"
@@ -19,6 +21,15 @@
         <meta-data
             android:name="firebase_performance_collection_enabled"
             android:value="true" />
+        
+        <!-- Explicitly disable Ad ID collection and personalization for Kids App compliance -->
+        <meta-data
+            android:name="google_analytics_adid_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_personalization_signals"
+            android:value="false" />
+            
         <activity
             android:name=".MainActivity"
             android:exported="true"

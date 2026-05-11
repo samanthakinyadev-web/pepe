@@ -648,6 +648,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.surfaceGray,
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           // Background Hidden Drawer Menu
@@ -772,6 +773,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildMainScreen() {
     return Scaffold(
       backgroundColor: AppColors.surfaceGray,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: AppColors.surfaceGray,
@@ -1387,9 +1389,9 @@ class _HomeScreenState extends State<HomeScreen>
         16,
         100,
       ), // Padding at bottom for BottomNavigationBar and potential FAB
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.52, // adjust for download and read buttons
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 200,
+        childAspectRatio: 0.52,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),

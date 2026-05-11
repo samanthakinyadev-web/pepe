@@ -200,7 +200,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     // 5. Fetch recent notifications
-    final notifications = futures[3] is List ? futures[3] as List<dynamic> : null;
+    final notifications = futures[3] is List
+        ? futures[3] as List<dynamic>
+        : null;
     if (mounted && notifications != null) {
       setState(() {
         _recentNotifications = notifications.take(2).toList();
@@ -671,10 +673,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ).animate().fadeIn(delay: 650.ms).slideX(begin: -0.08),
               const SizedBox(height: 16),
-              GridView.count(
+              GridView.extent(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 3,
+                maxCrossAxisExtent: 120,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
                 childAspectRatio: 0.8,

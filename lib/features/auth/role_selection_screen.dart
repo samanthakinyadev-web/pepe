@@ -31,6 +31,28 @@ Future<void> _launchWebsite(BuildContext context) async {
   }
 }
 
+Future<void> _launchEmail(BuildContext context) async {
+  final Uri url = Uri.parse('mailto:support@loholearning.co.ke');
+  if (!await launchUrl(url)) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not launch email app.')),
+      );
+    }
+  }
+}
+
+Future<void> _launchPhone(BuildContext context) async {
+  final Uri url = Uri.parse('tel:+254797349396');
+  if (!await launchUrl(url)) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not launch phone app.')),
+      );
+    }
+  }
+}
+
 Widget _buildInstructionStep({required IconData icon, required String text}) {
   return Row(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,7 +274,7 @@ class RoleSelectionScreen extends StatelessWidget {
                         title: 'I am a Parent/Guardian',
                         subtitle: 'Monitor progress and manage accounts.',
                         webMessage:
-                            'Hi Parent/Guardian , please create your account on our website to get started, then add your child.',
+                            'Please visit elimupepe.loholearning.co.ke to create your account and manage your child\'s learning journey.',
                         delay: 500.ms,
                       ),
                       const SizedBox(height: 20),
@@ -261,7 +283,7 @@ class RoleSelectionScreen extends StatelessWidget {
                         title: 'I am a Teacher/Educator',
                         subtitle: 'Manage classes and create assignments.',
                         webMessage:
-                            'Hi Teachers/Educators: Your school will create your account for you from the website. Once added, you can log in  to access your dashboard.',
+                            'Your school admin will create your account. Please log in at elimupepe.loholearning.co.ke to manage your classes.',
                         delay: 600.ms,
                       ),
                       const SizedBox(height: 32),
@@ -296,13 +318,75 @@ class RoleSelectionScreen extends StatelessWidget {
                         ).animate().fadeIn(delay: 800.ms),
                       ),
                       const SizedBox(height: 20),
-                      Text(
-                        'elimupepe.loholearning.co.ke',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
-                          fontSize: 12,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: () => _launchWebsite(context),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.language,
+                                  color: Colors.white.withOpacity(0.8),
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'elimupepe.loholearning.co.ke',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          GestureDetector(
+                            onTap: () => _launchEmail(context),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.email_outlined,
+                                  color: Colors.white.withOpacity(0.8),
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'support@loholearning.co.ke',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          GestureDetector(
+                            onTap: () => _launchPhone(context),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.phone_outlined,
+                                  color: Colors.white.withOpacity(0.8),
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '+254 797 349 396',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

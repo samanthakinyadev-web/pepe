@@ -129,10 +129,13 @@ class _MainViewState extends State<MainView> {
 
   Future<void> _fetchCompetencies() async {
     try {
-      final data = await LearnerDashboardApiService.instance.fetchCompetencies();
+      final data = await LearnerDashboardApiService.instance
+          .fetchCompetencies();
       if (mounted) {
         setState(() {
-          _competencies = data.map((e) => Competency.fromJson(e as Map<String, dynamic>)).toList();
+          _competencies = data
+              .map((e) => Competency.fromJson(e as Map<String, dynamic>))
+              .toList();
         });
       }
     } catch (e) {
@@ -258,9 +261,7 @@ class _MainViewState extends State<MainView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 900;
-        final navigator = isWide
-            ? _buildSectionRail()
-            : _buildSectionChips();
+        final navigator = isWide ? _buildSectionRail() : _buildSectionChips();
 
         final content = RefreshIndicator(
           color: AppColors.lightGreen,
@@ -280,21 +281,21 @@ class _MainViewState extends State<MainView> {
                 isWide ? 24 : 16,
                 72,
               ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minWidth: isWide ? 0 : constraints.maxWidth,
-                  maxWidth: isWide ? 1100 : constraints.maxWidth,
-                ),
-                child: _isLoading
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.only(top: 100),
-                          child: CircularProgressIndicator(
-                            color: AppColors.brandGreen,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1100),
+                  child: _isLoading
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 100),
+                            child: CircularProgressIndicator(
+                              color: AppColors.brandGreen,
+                            ),
                           ),
-                        ),
-                      )
-                    : _buildSelectedSectionContent(),
+                        )
+                      : _buildSelectedSectionContent(),
+                ),
               ),
             ),
           ),
@@ -366,26 +367,37 @@ class _MainViewState extends State<MainView> {
 
     return Container(
       color: Colors.white,
-      child: NavigationRail(
-        selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedSection = _dashboardSections[index].section;
-          });
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          Widget rail = NavigationRail(
+            selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+            onDestinationSelected: (index) {
+              setState(() {
+                _selectedSection = _dashboardSections[index].section;
+              });
+            },
+            labelType: NavigationRailLabelType.all,
+            backgroundColor: Colors.white,
+            minWidth: 280,
+            groupAlignment: -0.9,
+            destinations: _dashboardSections
+                .map(
+                  (section) => NavigationRailDestination(
+                    icon: Icon(section.icon),
+                    selectedIcon: Icon(section.icon),
+                    label: Text(section.label),
+                  ),
+                )
+                .toList(),
+          );
+
+          if (constraints.maxHeight < 800) {
+            return SingleChildScrollView(
+              child: SizedBox(height: 800, child: rail),
+            );
+          }
+          return rail;
         },
-        labelType: NavigationRailLabelType.all,
-        backgroundColor: Colors.white,
-        minWidth: 280,
-        groupAlignment: -0.9,
-        destinations: _dashboardSections
-            .map(
-              (section) => NavigationRailDestination(
-                icon: Icon(section.icon),
-                selectedIcon: Icon(section.icon),
-                label: Text(section.label),
-              ),
-            )
-            .toList(),
       ),
     );
   }
@@ -480,9 +492,7 @@ class _MainViewState extends State<MainView> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(
-              "Weekly Learning Summary",
-            ),
+            _buildSectionHeader("Weekly Learning Summary"),
             const SizedBox(height: 16),
             _buildWeeklySummaryFeed(),
           ],
@@ -491,9 +501,7 @@ class _MainViewState extends State<MainView> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader(
-              "Parent Tip",
-            ),
+            _buildSectionHeader("Parent Tip"),
             const SizedBox(height: 16),
             _buildParentTipSection(),
           ],
@@ -516,7 +524,7 @@ class _MainViewState extends State<MainView> {
           builder: (context, constraints) {
             if (constraints.maxWidth < 600) {
               return SizedBox(
-                height: 132,
+                height: 110,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
@@ -534,11 +542,12 @@ class _MainViewState extends State<MainView> {
             final columns = constraints.maxWidth >= 900
                 ? 5
                 : constraints.maxWidth >= 700
-                    ? 4
-                    : 3;
+                ? 4
+                : 3;
             const spacing = 12.0;
             final cardWidth =
-                (constraints.maxWidth - spacing * (columns - 1)) / columns;
+                ((constraints.maxWidth - spacing * (columns - 1)) / columns)
+                    .floorToDouble();
 
             return Wrap(
               spacing: spacing,
@@ -575,22 +584,19 @@ class _MainViewState extends State<MainView> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.brandGreen,
-              AppColors.lightGreen,
-            ],
+            colors: [AppColors.accentOrange, AppColors.accentOrange],
           ),
           borderRadius: BorderRadius.circular(24),
         ),
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  width: 54,
-                  height: 54,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
@@ -604,7 +610,7 @@ class _MainViewState extends State<MainView> {
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
-                      fontSize: 22,
+                      fontSize: 20,
                     ),
                   ),
                 ),
@@ -654,9 +660,7 @@ class _MainViewState extends State<MainView> {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.16),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
               ),
               child: Row(
                 children: [
@@ -668,7 +672,8 @@ class _MainViewState extends State<MainView> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      "Here is your learning snapshot for today.",
+                      "here is a learnshapshot for today.",
+
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.94),
                         fontWeight: FontWeight.w600,
@@ -685,7 +690,9 @@ class _MainViewState extends State<MainView> {
   }
 
   Widget _buildOverviewHighlights() {
-    final completedCount = _competencies.where((item) => item.progress >= 0.8).length;
+    final completedCount = _competencies
+        .where((item) => item.progress >= 0.8)
+        .length;
     final tasksDue = 2;
     final progressPercent = (_weeklyProgress * 100).round();
 
@@ -704,9 +711,7 @@ class _MainViewState extends State<MainView> {
               _buildOverviewStatCard(
                 title: "Weekly progress",
                 value: "$progressPercent%",
-                caption: _weeklyProgress >= 1
-                    ? "Goal reached"
-                    : "Keep going",
+                caption: _weeklyProgress >= 1 ? "Goal reached" : "Keep going",
                 icon: Icons.trending_up_rounded,
                 accent: AppColors.primaryBlue,
               ),
@@ -763,19 +768,19 @@ class _MainViewState extends State<MainView> {
     required Color accent,
   }) {
     return ElimuCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: accent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: accent, size: 24),
+            child: Icon(icon, color: accent, size: 20),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -784,25 +789,25 @@ class _MainViewState extends State<MainView> {
                   title,
                   style: const TextStyle(
                     color: AppColors.textMuted,
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: AppColors.textMain,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
+                  value,
+                  style: const TextStyle(
+                    color: AppColors.textMain,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
                   caption,
                   style: const TextStyle(
                     color: AppColors.textMuted,
-                    fontSize: 11,
+                    fontSize: 10,
                   ),
                 ),
               ],
@@ -836,12 +841,12 @@ class _MainViewState extends State<MainView> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: ElimuCard(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             child: Row(
               children: [
                 SizedBox(
-                  width: 50,
-                  height: 50,
+                  width: 40,
+                  height: 40,
                   child: CustomPaint(
                     painter: RingProgressPainter(
                       progress: progress,
@@ -904,25 +909,27 @@ class _MainViewState extends State<MainView> {
     }
 
     return Column(
-      children: assignments.map((a) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: _assignmentTile(a.$1, a.$2),
-      )).toList(),
+      children: assignments
+          .map(
+            (a) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _assignmentTile(a.$1, a.$2),
+            ),
+          )
+          .toList(),
     );
   }
 
   Widget _assignmentTile(String title, String subtitle) {
     return ElimuCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const CircleAvatar(
           backgroundColor: AppColors.primaryBlue,
           child: Icon(Icons.assignment_rounded, color: Colors.white),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
         subtitle: Text(
           subtitle,
           style: const TextStyle(color: AppColors.textMuted),
@@ -934,6 +941,7 @@ class _MainViewState extends State<MainView> {
 
   Widget _buildLearningOutcomes() {
     return const ElimuCard(
+      padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -969,25 +977,27 @@ class _MainViewState extends State<MainView> {
     }
 
     return Column(
-      children: activities.map((a) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: _activityTile(a.$1, a.$2),
-      )).toList(),
+      children: activities
+          .map(
+            (a) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _activityTile(a.$1, a.$2),
+            ),
+          )
+          .toList(),
     );
   }
 
   Widget _activityTile(String title, String subtitle) {
     return ElimuCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const CircleAvatar(
           backgroundColor: AppColors.accentOrange,
           child: Icon(Icons.history_rounded, color: Colors.white),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
         subtitle: Text(
           subtitle,
           style: const TextStyle(color: AppColors.textMuted),
@@ -999,6 +1009,7 @@ class _MainViewState extends State<MainView> {
 
   Widget _buildBadges() {
     return const ElimuCard(
+      padding: EdgeInsets.symmetric(vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -1037,12 +1048,14 @@ class _MainViewState extends State<MainView> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: ElimuCard(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.brandGreen.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
@@ -1065,8 +1078,10 @@ class _MainViewState extends State<MainView> {
                     ),
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.textMuted),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textMuted,
+                ),
               ],
             ),
           ),
@@ -1080,12 +1095,12 @@ class _MainViewState extends State<MainView> {
     bool compact = false,
   }) {
     return SizedBox(
-      width: compact ? 156 : null,
-      height: compact ? 132 : 126,
+      width: compact ? 140 : null,
+      height: compact ? 110 : 106,
       child: Stack(
         children: [
           ElimuCard(
-            padding: EdgeInsets.all(compact ? 10 : 12),
+            padding: EdgeInsets.all(compact ? 8 : 10),
             onTap: action.onTap,
             backgroundColor: Colors.white,
             child: Column(
@@ -1095,18 +1110,21 @@ class _MainViewState extends State<MainView> {
                 Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.all(compact ? 10 : 12),
+                      padding: EdgeInsets.all(compact ? 8 : 10),
                       decoration: BoxDecoration(
                         color: action.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(action.icon,
-                          color: action.color, size: compact ? 22 : 24),
+                      child: Icon(
+                        action.icon,
+                        color: action.color,
+                        size: compact ? 20 : 22,
+                      ),
                     ),
                     const Spacer(),
                     Icon(
                       Icons.arrow_outward_rounded,
-                      size: compact ? 16 : 18,
+                      size: compact ? 14 : 16,
                       color: AppColors.textMuted.withValues(alpha: 0.8),
                     ),
                   ],
@@ -1117,16 +1135,16 @@ class _MainViewState extends State<MainView> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: compact ? 11 : 13,
+                    fontSize: compact ? 11 : 12,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textMain,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   "Open ${action.title.toLowerCase()}",
                   style: TextStyle(
-                    fontSize: compact ? 10 : 11,
+                    fontSize: compact ? 9 : 10,
                     color: AppColors.textMuted,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1168,74 +1186,74 @@ class _MainViewState extends State<MainView> {
   }
 
   List<_QuickAccessAction> get _quickAccessActions => [
-        _QuickAccessAction(
+    _QuickAccessAction(
+      title: 'My Learning Areas',
+      icon: Icons.menu_book_rounded,
+      color: AppColors.brandGreen,
+      badgeCount: 0,
+      onTap: () => _openMenuItem([
+        MenuItem(
+          id: 'learning_areas',
           title: 'My Learning Areas',
           icon: Icons.menu_book_rounded,
-          color: AppColors.brandGreen,
-          badgeCount: 0,
-          onTap: () => _openMenuItem([
-            MenuItem(
-              id: 'learning_areas',
-              title: 'My Learning Areas',
-              icon: Icons.menu_book_rounded,
-            ),
-          ]),
         ),
-        _QuickAccessAction(
-          title: 'Library',
-          icon: Icons.local_library_rounded,
-          color: AppColors.accentCoral,
-          badgeCount: 0,
-          onTap: () => widget.onNavigate(1),
-        ),
-        _QuickAccessAction(
-          title: 'Grade Book',
-          icon: Icons.assignment_turned_in_rounded,
-          color: AppColors.primaryBlue,
-          badgeCount: 3, // Mocking some pending assignments
-          onTap: _openGradeBook,
-        ),
-        _QuickAccessAction(
+      ]),
+    ),
+    _QuickAccessAction(
+      title: 'Library',
+      icon: Icons.local_library_rounded,
+      color: AppColors.accentCoral,
+      badgeCount: 0,
+      onTap: () => widget.onNavigate(1),
+    ),
+    _QuickAccessAction(
+      title: 'Grade Book',
+      icon: Icons.assignment_turned_in_rounded,
+      color: AppColors.primaryBlue,
+      badgeCount: 3, // Mocking some pending assignments
+      onTap: _openGradeBook,
+    ),
+    _QuickAccessAction(
+      title: 'Interactive Books',
+      icon: Icons.laptop_mac_rounded,
+      color: AppColors.accentPurple,
+      badgeCount: 0,
+      onTap: () => _openMenuItem([
+        MenuItem(
+          id: 'interactive_books',
           title: 'Interactive Books',
           icon: Icons.laptop_mac_rounded,
-          color: AppColors.accentPurple,
-          badgeCount: 0,
-          onTap: () => _openMenuItem([
-            MenuItem(
-              id: 'interactive_books',
-              title: 'Interactive Books',
-              icon: Icons.laptop_mac_rounded,
-            ),
-          ]),
         ),
-        _QuickAccessAction(
+      ]),
+    ),
+    _QuickAccessAction(
+      title: 'Leaderboard',
+      icon: Icons.emoji_events_rounded,
+      color: AppColors.accentYellow,
+      badgeCount: 0,
+      onTap: () => _openMenuItem([
+        MenuItem(
+          id: 'leaderboard',
           title: 'Leaderboard',
           icon: Icons.emoji_events_rounded,
-          color: AppColors.accentYellow,
-          badgeCount: 0,
-          onTap: () => _openMenuItem([
-            MenuItem(
-              id: 'leaderboard',
-              title: 'Leaderboard',
-              icon: Icons.emoji_events_rounded,
-            ),
-          ]),
         ),
-        _QuickAccessAction(
-          title: 'Elimu Quest',
-          icon: Icons.bolt_rounded,
-          color: AppColors.accentOrange,
-          badgeCount: 5, // Mocking new quests
-          onTap: () => widget.onNavigate(2),
-        ),
-        _QuickAccessAction(
-          title: 'More',
-          icon: Icons.menu_rounded,
-          color: AppColors.accentCoral,
-          badgeCount: 0,
-          onTap: () => widget.onNavigate(3),
-        ),
-      ];
+      ]),
+    ),
+    _QuickAccessAction(
+      title: 'Elimu Quest',
+      icon: Icons.bolt_rounded,
+      color: AppColors.accentOrange,
+      badgeCount: 5, // Mocking new quests
+      onTap: () => widget.onNavigate(2),
+    ),
+    _QuickAccessAction(
+      title: 'More',
+      icon: Icons.menu_rounded,
+      color: AppColors.accentCoral,
+      badgeCount: 0,
+      onTap: () => widget.onNavigate(3),
+    ),
+  ];
 
   Future<void> _openGradeBook() async {
     final targetUrl = 'https://elimupepe.loholearning.co.ke/student/gradebook';
@@ -1246,9 +1264,7 @@ class _MainViewState extends State<MainView> {
 
     if (webviewLoginUrl == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open Grade Book right now.'),
-        ),
+        const SnackBar(content: Text('Could not open Grade Book right now.')),
       );
       return;
     }
@@ -1284,7 +1300,7 @@ class _MainViewState extends State<MainView> {
                 top: Radius.circular(24),
               ),
             ),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1357,7 +1373,7 @@ class _MainViewState extends State<MainView> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
             child: Row(
               children: [
                 Expanded(
@@ -1381,12 +1397,9 @@ class _MainViewState extends State<MainView> {
     );
   }
 
-  Widget _buildGoalMeta({
-    required String label,
-    required String value,
-  }) {
+  Widget _buildGoalMeta({required String label, required String value}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surfaceGray,
         borderRadius: BorderRadius.circular(16),
@@ -1420,22 +1433,20 @@ class _MainViewState extends State<MainView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isTablet = constraints.maxWidth >= 700;
-        final columns = isTablet
-            ? 2
-            : constraints.maxWidth >= 1000
-                ? 4
-                : constraints.maxWidth >= 800
-                    ? 3
-                    : 2;
+        final columns = constraints.maxWidth >= 1000
+            ? 4
+            : constraints.maxWidth >= 800
+            ? 3
+            : 2;
 
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
-            crossAxisSpacing: isTablet ? 14 : 16,
-            mainAxisSpacing: isTablet ? 14 : 16,
-            childAspectRatio: isTablet ? 1.9 : 1.08,
+            crossAxisSpacing: isTablet ? 14 : 12,
+            mainAxisSpacing: isTablet ? 14 : 12,
+            childAspectRatio: isTablet ? 2.2 : 1.4,
           ),
           itemCount: _featuredCoreLearningPillars.length,
           itemBuilder: (context, index) {
@@ -1453,62 +1464,60 @@ class _MainViewState extends State<MainView> {
       _coreLearningPillars.take(4).toList();
 
   List<Map<String, Object>> get _coreLearningPillars => [
-        {
-          "title": "Literacy",
-          "icon": Icons.menu_book_rounded,
-          "color": AppColors.primaryBlue,
-          "desc": "Communication skills in English, Kiswahili, and local languages.",
-        },
-        {
-          "title": "Mathematics",
-          "icon": Icons.calculate_rounded,
-          "color": AppColors.accentPurple,
-          "desc": "Focusing on logical thinking and problem-solving.",
-        },
-        {
-          "title": "Science and Technology",
-          "icon": Icons.biotech_rounded,
-          "color": AppColors.brandGreen,
-          "desc": "Nature, experimentation, and digital literacy.",
-        },
-        {
-          "title": "Social Studies",
-          "icon": Icons.public_rounded,
-          "color": AppColors.accentOrange,
-          "desc": "Citizenship, geography, history, and community life.",
-        },
-        {
-          "title": "Creative Arts & Sports",
-          "icon": Icons.palette_rounded,
-          "color": AppColors.accentYellow,
-          "desc": "Performing arts, visual arts, and PE.",
-        },
-        {
-          "title": "Religious Education",
-          "icon": Icons.church_rounded,
-          "color": AppColors.primaryBlue,
-          "desc": "CRE, IRE, and HRE for values and growth.",
-        },
-        {
-          "title": "Agriculture and Nutrition",
-          "icon": Icons.agriculture_rounded,
-          "color": AppColors.brandGreen,
-          "desc": "Food production and healthy living skills.",
-        },
-        {
-          "title": "Life Skills Education",
-          "icon": Icons.psychology_rounded,
-          "color": AppColors.accentPurple,
-          "desc": "Self-awareness and social-emotional growth.",
-        },
-      ];
+    {
+      "title": "Literacy",
+      "icon": Icons.menu_book_rounded,
+      "color": AppColors.primaryBlue,
+      "desc":
+          "Communication skills in English, Kiswahili, and local languages.",
+    },
+    {
+      "title": "Mathematics",
+      "icon": Icons.calculate_rounded,
+      "color": AppColors.accentPurple,
+      "desc": "Focusing on logical thinking and problem-solving.",
+    },
+    {
+      "title": "Science and Technology",
+      "icon": Icons.biotech_rounded,
+      "color": AppColors.brandGreen,
+      "desc": "Nature, experimentation, and digital literacy.",
+    },
+    {
+      "title": "Social Studies",
+      "icon": Icons.public_rounded,
+      "color": AppColors.accentOrange,
+      "desc": "Citizenship, geography, history, and community life.",
+    },
+    {
+      "title": "Creative Arts & Sports",
+      "icon": Icons.palette_rounded,
+      "color": AppColors.accentYellow,
+      "desc": "Performing arts, visual arts, and PE.",
+    },
+    {
+      "title": "Religious Education",
+      "icon": Icons.church_rounded,
+      "color": AppColors.primaryBlue,
+      "desc": "CRE, IRE, and HRE for values and growth.",
+    },
+    {
+      "title": "Agriculture and Nutrition",
+      "icon": Icons.agriculture_rounded,
+      "color": AppColors.brandGreen,
+      "desc": "Food production and healthy living skills.",
+    },
+    {
+      "title": "Life Skills Education",
+      "icon": Icons.psychology_rounded,
+      "color": AppColors.accentPurple,
+      "desc": "Self-awareness and social-emotional growth.",
+    },
+  ];
 
-  Widget _buildPillarCard(
-    Map<String, Object> p, {
-    bool isTablet = false,
-  }) {
+  Widget _buildPillarCard(Map<String, Object> p, {bool isTablet = false}) {
     return ElimuCard(
-      padding: EdgeInsets.all(isTablet ? 14 : 12),
+      padding: EdgeInsets.all(isTablet ? 12 : 10),
       onTap: () => widget.onNavigate(1),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1547,15 +1556,15 @@ class _MainViewState extends State<MainView> {
                 ),
                 const SizedBox(width: 12),
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: (p['color'] as Color).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
                     p['icon'] as IconData,
                     color: p['color'] as Color,
-                    size: 28,
+                    size: 24,
                   ),
                 ),
               ],
@@ -1565,15 +1574,15 @@ class _MainViewState extends State<MainView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: EdgeInsets.all(isTablet ? 10 : 12),
+                  padding: EdgeInsets.all(isTablet ? 8 : 10),
                   decoration: BoxDecoration(
                     color: (p['color'] as Color).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     p['icon'] as IconData,
                     color: p['color'] as Color,
-                    size: isTablet ? 24 : 28,
+                    size: isTablet ? 20 : 24,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1624,9 +1633,7 @@ class _MainViewState extends State<MainView> {
             return Container(
               decoration: const BoxDecoration(
                 color: AppColors.surfaceGray,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(28),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: SafeArea(
                 top: false,
@@ -1660,11 +1667,11 @@ class _MainViewState extends State<MainView> {
                           controller: scrollController,
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 1.15,
-                          ),
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                                childAspectRatio: 1.15,
+                              ),
                           itemCount: _coreLearningPillars.length,
                           itemBuilder: (context, index) {
                             return _buildPillarCard(
@@ -1731,6 +1738,7 @@ class _MainViewState extends State<MainView> {
 
   Widget _buildParentTipSection() {
     return ElimuCard(
+      padding: const EdgeInsets.all(16),
       backgroundColor: AppColors.accentYellow.withValues(alpha: 0.1),
       borderColor: AppColors.accentYellow.withValues(alpha: 0.3),
       child: Column(
@@ -1776,10 +1784,7 @@ class _MainViewState extends State<MainView> {
             ),
           ),
         ),
-        if (trailing != null) ...[
-          trailing,
-          const SizedBox(width: 4),
-        ],
+        if (trailing != null) ...[trailing, const SizedBox(width: 4)],
         if (onTap != null)
           InkWell(
             onTap: onTap,
@@ -1823,9 +1828,7 @@ class _MainViewState extends State<MainView> {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.18),
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
       child: Text(
         label,
@@ -1837,7 +1840,6 @@ class _MainViewState extends State<MainView> {
       ),
     );
   }
-
 }
 
 class _QuickAccessAction {
