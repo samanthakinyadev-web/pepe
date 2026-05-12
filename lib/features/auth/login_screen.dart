@@ -28,6 +28,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _studentIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FocusNode _studentIdFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   bool _rememberMe = false;
@@ -47,36 +49,34 @@ class _LoginScreenState extends State<LoginScreen> {
     final prefs = await SharedPreferences.getInstance();
     final rememberMe = prefs.getBool('remember_me') ?? false;
 
-    if (rememberMe) {
-      String? studentId = await _secureStorage.read(key: 'saved_student_id');
-      if (studentId == null || studentId.isEmpty) {
-        studentId = prefs.getString('saved_student_id') ?? '';
-        if (studentId.isNotEmpty) {
-          await _secureStorage.write(key: 'saved_student_id', value: studentId);
-          await prefs.remove('saved_student_id');
-        }
+    String studentId = await _secureStorage.read(key: 'saved_student_id') ?? '';
+    if (studentId.isEmpty) {
+      studentId = prefs.getString('saved_student_id') ?? '';
+      if (studentId.isNotEmpty) {
+        await _secureStorage.write(key: 'saved_student_id', value: studentId);
+        await prefs.remove('saved_student_id');
       }
+    }
 
-      // Try reading from secure storage first
-      String? password = await _secureStorage.read(key: 'saved_password');
-
-      // Migration: If not in secure storage, check old insecure storage
-      if (password == null) {
-        password = prefs.getString('saved_password') ?? '';
-        if (password.isNotEmpty) {
-          // Move to secure storage and remove from insecure
-          await _secureStorage.write(key: 'saved_password', value: password);
-          await prefs.remove('saved_password');
-        }
+    String password = await _secureStorage.read(key: 'saved_password') ?? '';
+    if (password.isEmpty) {
+      password = prefs.getString('saved_password') ?? '';
+      if (password.isNotEmpty) {
+        await _secureStorage.write(key: 'saved_password', value: password);
+        await prefs.remove('saved_password');
       }
+    }
 
-      if (mounted) {
-        final savedStudentId = studentId;
-        final savedPassword = password;
-        _studentIdController.text = savedStudentId.toUpperCase();
-        _passwordController.text = savedPassword;
-        setState(() => _rememberMe = rememberMe);
-      }
+    final hasSavedCredentials = studentId.trim().isNotEmpty &&
+        password.isNotEmpty;
+    if (!hasSavedCredentials && !rememberMe) {
+      return;
+    }
+
+    if (mounted) {
+      _studentIdController.text = studentId.toUpperCase();
+      _passwordController.text = password;
+      setState(() => _rememberMe = hasSavedCredentials || rememberMe);
     }
   }
 
@@ -84,6 +84,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _studentIdController.dispose();
     _passwordController.dispose();
+    _studentIdFocusNode.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -381,7 +383,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                       hint:
                                           'Enter your Student ID (LO-XXXXXXXX)',
                                       controller: _studentIdController,
+                                      focusNode: _studentIdFocusNode,
+                                      autofocus: true,
                                       keyboardType: TextInputType.text,
+                                      textInputAction: TextInputAction.next,
+                                      onFieldSubmitted: (_) {
+                                        FocusScope.of(context).requestFocus(
+                                          _passwordFocusNode,
+                                        );
+                                      },
                                       validator: (value) {
                                         final text = (value ?? '')
                                             .trim()
@@ -408,7 +418,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                       label: 'Password',
                                       hint: 'Enter your password',
                                       controller: _passwordController,
+                                      focusNode: _passwordFocusNode,
                                       isPassword: true,
+                                      textInputAction: TextInputAction.done,
+                                      onFieldSubmitted: (_) => _handleLogin(),
                                       validator: (value) {
                                         if ((value ?? '').isEmpty) {
                                           return 'Password is required';

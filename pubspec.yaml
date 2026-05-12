@@ -4,7 +4,7 @@ description: "Elimu Pepe - Secure CBC Learning App for Smart Learning."
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
-version: 1.2.8+14
+version: 1.2.8+15
 
 environment:
   sdk: ^3.10.7
@@ -54,6 +54,8 @@ dependencies:
   firebase_performance: ^0.10.1+10
   url_launcher: ^6.3.1
   webview_flutter: ^4.10.0
+  webview_flutter_android: ^4.10.13
+  webview_flutter_wkwebview: ^3.23.8
   flutter_slider_drawer: ^2.1.2
   path: any
   package_info_plus: ^9.0.0

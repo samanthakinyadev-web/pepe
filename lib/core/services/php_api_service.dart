@@ -143,7 +143,7 @@ class PhpApiService {
         final List<dynamic> data = response.data is List
             ? response.data
             : response.data['data'] ?? response.data['leaderboard'] ?? [];
-        return data.map((e) => e as Map<String, dynamic>).toList();
+        return data.whereType<Map<String, dynamic>>().toList();
       }
       return [];
     } catch (e) {

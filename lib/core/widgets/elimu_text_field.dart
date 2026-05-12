@@ -6,9 +6,13 @@ class ElimuTextField extends StatefulWidget {
   final String hint;
   final IconData icon;
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final bool isPassword;
+  final bool autofocus;
   final TextInputType keyboardType;
+  final TextInputAction? textInputAction;
   final String? Function(String?)? validator;
+  final ValueChanged<String>? onFieldSubmitted;
 
   const ElimuTextField({
     super.key,
@@ -16,9 +20,13 @@ class ElimuTextField extends StatefulWidget {
     required this.hint,
     required this.icon,
     required this.controller,
+    this.focusNode,
     this.isPassword = false,
+    this.autofocus = false,
     this.keyboardType = TextInputType.text,
+    this.textInputAction,
     this.validator,
+    this.onFieldSubmitted,
   });
 
   @override
@@ -44,7 +52,11 @@ class _ElimuTextFieldState extends State<ElimuTextField> {
         const SizedBox(height: 8),
         TextFormField(
           controller: widget.controller,
+          focusNode: widget.focusNode,
+          autofocus: widget.autofocus,
           keyboardType: widget.keyboardType,
+          textInputAction: widget.textInputAction,
+          onFieldSubmitted: widget.onFieldSubmitted,
           obscureText: widget.isPassword ? _obscureText : false,
           validator: widget.validator,
           style: const TextStyle(

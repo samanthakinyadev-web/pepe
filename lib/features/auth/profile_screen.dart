@@ -23,6 +23,12 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   static const String _avatarCacheKeyPref = 'profile_image_cache_key';
+  static const Set<String> _rememberedLoginKeys = {
+    'remember_me',
+    'saved_student_id',
+    'saved_password',
+    'saved_email',
+  };
   String _userName = 'Loading...';
   String _lohoId = '...';
   String _grade = 'Grade ...';
@@ -302,6 +308,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return null;
   }
 
+  Future<void> _clearLocalSessionPreservingLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in prefs.getKeys()) {
+      if (_rememberedLoginKeys.contains(key)) {
+        continue;
+      }
+      await prefs.remove(key);
+    }
+  }
+
   Future<void> _confirmLogout(BuildContext context) async {
     final bool? shouldLogout = await showDialog<bool>(
       context: context,
@@ -334,9 +350,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // 1. Clear tokens securely
       await AuthService.instance.logout();
 
-      // 2. Clear locally cached profile information
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      // 2. Clear locally cached profile information but keep remembered login.
+      await _clearLocalSessionPreservingLogin();
 
       if (!context.mounted) return;
       // 3. Navigate back to the pre-login welcome flow

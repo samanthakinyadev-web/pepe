@@ -21,6 +21,19 @@ class CategoryItemsScreen extends StatefulWidget {
 class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
   late Future<List<dynamic>> _itemsFuture;
 
+  Future<void> _handleBackNavigation() async {
+    if (!mounted) return;
+
+    // Keep back behavior local to this route so we return to the library
+    // screen instead of falling through to a higher-level exit path.
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    Navigator.of(context).maybePop();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -31,35 +44,42 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.lightGreen,
-      appBar: AppBar(
-        elevation: 0,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _handleBackNavigation();
+      },
+      child: Scaffold(
         backgroundColor: AppColors.lightGreen,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            Icon(widget.menuItem.icon, size: 24, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                widget.menuItem.title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: AppColors.lightGreen,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: _handleBackNavigation,
+          ),
+          title: Row(
+            children: [
+              Icon(widget.menuItem.icon, size: 24, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.menuItem.title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+        body: widget.menuItem.isComingSoon
+            ? _buildComingSoonView()
+            : _buildItemsView(),
       ),
-      body: widget.menuItem.isComingSoon
-          ? _buildComingSoonView()
-          : _buildItemsView(),
     );
   }
 

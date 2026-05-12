@@ -59,20 +59,35 @@ class MenuScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Explore Menu',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.brandGreen,
-                  letterSpacing: -0.5,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.lightGreen.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Explore Menu',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.brandGreen,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Discover more learning resources and activities.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.blueGrey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
               ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.2),
-              const SizedBox(height: 8),
-              Text(
-                'Discover more learning resources and activities.',
-                style: TextStyle(fontSize: 16, color: Colors.blueGrey.shade600),
-              ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
               const SizedBox(height: 24),
               GridView.builder(
                 shrinkWrap: true,

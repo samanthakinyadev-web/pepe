@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:elimupepe/features/parental_control/parental_gate.dart';
@@ -38,6 +40,7 @@ class _WebViewContentScreenState extends State<WebViewContentScreen>
   bool _isLoading = true;
   bool _hasShownLoadError = false;
   bool _isUsingFallback = false;
+  bool _allowRoutePop = false;
   int _progress = 0;
   String? _loadError;
   static String? _cachedOfflineHtml;
@@ -54,7 +57,19 @@ class _WebViewContentScreenState extends State<WebViewContentScreen>
       parent: _loaderPulseController,
       curve: Curves.easeInOut,
     );
-    _controller = WebViewController()
+    late final PlatformWebViewControllerCreationParams creationParams;
+    if (WebViewPlatform.instance is WebKitWebViewPlatform) {
+      creationParams = WebKitWebViewControllerCreationParams(
+        allowsInlineMediaPlayback: true,
+        mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
+      );
+    } else {
+      creationParams = const PlatformWebViewControllerCreationParams();
+    }
+
+    _controller = WebViewController.fromPlatformCreationParams(
+      creationParams,
+    )
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
@@ -113,6 +128,10 @@ class _WebViewContentScreenState extends State<WebViewContentScreen>
           },
         ),
       );
+    if (_controller.platform is AndroidWebViewController) {
+      (_controller.platform as AndroidWebViewController)
+          .setMediaPlaybackRequiresUserGesture(false);
+    }
     _loadUrl(widget.url);
   }
 
@@ -305,187 +324,232 @@ class _WebViewContentScreenState extends State<WebViewContentScreen>
     await _loadUrl(widget.url);
   }
 
+  Future<void> _handleBackNavigation() async {
+    try {
+      if (await _controller.canGoBack()) {
+        await _controller.goBack();
+        return;
+      }
+    } catch (_) {
+      // If the history check fails, fall back to closing the screen.
+    }
+
+    _requestClose();
+  }
+
   void _closeWebView() {
-    Navigator.of(context).maybePop();
+    _requestClose();
+  }
+
+  void _requestClose() {
+    if (!mounted) {
+      return;
+    }
+
+    if (_allowRoutePop) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    setState(() {
+      _allowRoutePop = true;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.lightGreen,
-        automaticallyImplyLeading: false,
-        title: Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-        bottom: _isLoading
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(3),
-                child: LinearProgressIndicator(
-                  minHeight: 3,
-                  value: _progress > 0 && _progress < 100
-                      ? _progress / 100
-                      : null,
-                  backgroundColor: Colors.white.withValues(alpha: 0.24),
-                  valueColor: const AlwaysStoppedAnimation(
-                    AppColors.brandGreen,
-                  ),
-                ),
-              )
-            : null,
-      ),
-      body: Stack(
-        children: [
-          WebViewWidget(controller: _controller),
-          if (_isLoading)
-            Container(
-              color: Colors.white.withValues(alpha: 0.55),
-              child: Center(
-                child: AnimatedBuilder(
-                  animation: _loaderPulse,
-                  builder: (context, child) {
-                    final pulse = 0.95 + (_loaderPulse.value * 0.08);
-                    final glow = 0.05 + (_loaderPulse.value * 0.09);
-
-                    return Transform.scale(
-                      scale: pulse,
-                      child: Container(
-                        width: 132,
-                        height: 132,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              AppColors.lightGreen.withValues(alpha: glow),
-                              Colors.white.withValues(alpha: 0.02),
-                            ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.brandGreen.withValues(
-                                alpha: 0.12 + (_loaderPulse.value * 0.08),
-                              ),
-                              blurRadius: 22,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                        child: SizedBox(
-                          width: 120,
-                          height: 120,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              CircularProgressIndicator(
-                                strokeWidth: 6,
-                                color: AppColors.lightGreen,
-                                value: _progress > 0 && _progress < 100
-                                    ? _progress / 100
-                                    : null,
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: AppColors.brandGreen.withValues(
-                                      alpha: 0.16,
-                                    ),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 180),
-                                  transitionBuilder: (child, animation) {
-                                    return FadeTransition(
-                                      opacity: animation,
-                                      child: ScaleTransition(
-                                        scale: Tween<double>(
-                                          begin: 0.95,
-                                          end: 1.0,
-                                        ).animate(animation),
-                                        child: child,
-                                      ),
-                                    );
-                                  },
-                                  child: Text(
-                                    '${_progress.clamp(0, 100)}%',
-                                    key: ValueKey<int>(_progress),
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.3,
-                                      color: AppColors.brandGreen,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          Positioned(
-            top: 12,
-            right: 12,
-            child: SafeArea(
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _closeWebView,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.18),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+    return PopScope(
+      canPop: _allowRoutePop,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _handleBackNavigation();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppColors.lightGreen,
+          automaticallyImplyLeading: false,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: _closeWebView,
           ),
-          if (_loadError != null)
-            Positioned.fill(
-              child: Container(
-                color: Colors.white.withValues(alpha: 0.92),
-                child: ErrorFeedback.buildInlineError(
-                  context: context,
-                  title: 'Could not load page',
-                  error: _loadError,
-                  onRetry: _retryLoad,
-                  fallback:
-                      'Please check your network connection and try again.',
+          title: Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+          bottom: _isLoading
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(3),
+                  child: LinearProgressIndicator(
+                    minHeight: 3,
+                    value: _progress > 0 && _progress < 100
+                        ? _progress / 100
+                        : null,
+                    backgroundColor: Colors.white.withValues(alpha: 0.24),
+                    valueColor: const AlwaysStoppedAnimation(
+                      AppColors.brandGreen,
+                    ),
+                  ),
+                )
+              : null,
+        ),
+        body: Stack(
+          children: [
+            WebViewWidget(controller: _controller),
+            if (_isLoading)
+              Container(
+                color: Colors.white.withValues(alpha: 0.55),
+                child: Center(
+                  child: AnimatedBuilder(
+                    animation: _loaderPulse,
+                    builder: (context, child) {
+                      final pulse = 0.95 + (_loaderPulse.value * 0.08);
+                      final glow = 0.05 + (_loaderPulse.value * 0.09);
+
+                      return Transform.scale(
+                        scale: pulse,
+                        child: Container(
+                          width: 132,
+                          height: 132,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                AppColors.lightGreen.withValues(alpha: glow),
+                                Colors.white.withValues(alpha: 0.02),
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.brandGreen.withValues(
+                                  alpha: 0.12 + (_loaderPulse.value * 0.08),
+                                ),
+                                blurRadius: 22,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: SizedBox(
+                            width: 120,
+                            height: 120,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                CircularProgressIndicator(
+                                  strokeWidth: 6,
+                                  color: AppColors.lightGreen,
+                                  value: _progress > 0 && _progress < 100
+                                      ? _progress / 100
+                                      : null,
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(
+                                      color: AppColors.brandGreen.withValues(
+                                        alpha: 0.16,
+                                      ),
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 180),
+                                    transitionBuilder: (child, animation) {
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: ScaleTransition(
+                                          scale: Tween<double>(
+                                            begin: 0.95,
+                                            end: 1.0,
+                                          ).animate(animation),
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                    child: Text(
+                                      '${_progress.clamp(0, 100)}%',
+                                      key: ValueKey<int>(_progress),
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.3,
+                                        color: AppColors.brandGreen,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: SafeArea(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _closeWebView,
+                    borderRadius: BorderRadius.circular(999),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.18),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
-        ],
+            if (_loadError != null)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  child: ErrorFeedback.buildInlineError(
+                    context: context,
+                    title: 'Could not load page',
+                    error: _loadError,
+                    onRetry: _retryLoad,
+                    fallback:
+                        'Please check your network connection and try again.',
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -23,6 +23,12 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   static const String _avatarCacheKeyPref = 'profile_image_cache_key';
+  static const Set<String> _rememberedLoginKeys = {
+    'remember_me',
+    'saved_student_id',
+    'saved_password',
+    'saved_email',
+  };
   String _userName = 'Loading...';
   String _lohoId = '...';
   String _grade = 'Grade ...';
@@ -64,6 +70,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             WebViewContentScreen(title: title, url: webviewLoginUrl),
       ),
     );
+  }
+
+  Future<void> _clearLocalSessionPreservingLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in prefs.getKeys()) {
+      if (_rememberedLoginKeys.contains(key)) {
+        continue;
+      }
+      await prefs.remove(key);
+    }
   }
 
   @override
@@ -206,7 +222,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     // 5. Fetch recent notifications
-    final notifications = futures[3] is List ? futures[3] as List<dynamic> : null;
+    final notifications = futures[3] is List
+        ? futures[3] as List<dynamic>
+        : null;
     if (mounted && notifications != null) {
       setState(() {
         _recentNotifications = notifications.take(2).toList();
@@ -338,9 +356,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // 1. Clear tokens securely
       await AuthService.instance.logout();
 
-      // 2. Clear locally cached profile information
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      // 2. Clear locally cached profile information but keep remembered login.
+      await _clearLocalSessionPreservingLogin();
 
       if (!context.mounted) return;
       // 3. Navigate back to the pre-login welcome flow
@@ -353,6 +370,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+    final pagePadding = EdgeInsets.all(isLandscape ? 16.0 : 24.0);
+    final sectionGap = isLandscape ? 20.0 : 32.0;
+    final headerAvatarRadius = isLandscape ? 34.0 : 50.0;
+    final headerNameSize = isLandscape ? 20.0 : 24.0;
+    final headerSubTextSize = isLandscape ? 14.0 : 16.0;
+    final headerIdTextSize = isLandscape ? 13.0 : 14.0;
+    final cardRadius = isLandscape ? 16.0 : 20.0;
+    final statCrossAxisCount = isLandscape ? 3 : 3;
+    final badgeCrossAxisCount = isLandscape ? 4 : 3;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0F8FF),
       appBar: AppBar(
@@ -411,7 +440,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: AppColors.brandGreen,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(24.0),
+          padding: pagePadding,
           child: Column(
             children: [
               // Avatar and Name
@@ -419,16 +448,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(4),
+                      padding: EdgeInsets.all(isLandscape ? 3 : 4),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: AppColors.lightGreen,
-                          width: 4,
+                          width: isLandscape ? 3 : 4,
                         ),
                       ),
                       child: CircleAvatar(
-                        radius: 50,
+                        radius: headerAvatarRadius,
                         backgroundImage: NetworkImage(
                           _profileImageUrl.isNotEmpty
                               ? _profileImageUrl
@@ -440,10 +469,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(
                       _userName,
                       style: const TextStyle(
-                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF333333),
-                      ),
+                      ).copyWith(fontSize: headerNameSize),
                     ),
                     const SizedBox(height: 8),
                     Container(
@@ -457,8 +485,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: Text(
                         'Loho ID: $_lohoId',
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: headerIdTextSize,
                           fontWeight: FontWeight.bold,
                           color: AppColors.brandGreen,
                         ),
@@ -467,26 +495,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 6),
                     Text(
                       '$_grade • Explorer',
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: headerSubTextSize,
                         color: Colors.blueGrey,
                       ),
                     ),
                   ],
                 ).animate().scale(duration: 500.ms, curve: Curves.easeOutBack),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: sectionGap),
 
               // Subscription Plan
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(isLandscape ? 16 : 20),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [AppColors.lightGreen, AppColors.brandGreen],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(cardRadius),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.brandGreen.withOpacity(0.3),
@@ -509,16 +537,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         size: 32,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: isLandscape ? 12 : 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             _isSubscribed ? 'Premium Plan' : 'Free Plan',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: isLandscape ? 18 : 20,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -527,9 +555,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _isSubscribed
                                 ? 'Active Subscription'
                                 : 'No active subscription',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white70,
-                              fontSize: 14,
+                              fontSize: isLandscape ? 12 : 14,
                             ),
                           ),
                         ],
@@ -566,34 +594,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.2),
 
-              const SizedBox(height: 32),
+              SizedBox(height: sectionGap),
 
               // Stats Row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildStatCard(
-                    _points,
-                    'Points',
-                    Icons.star_rounded,
-                    AppColors.accentYellow,
-                  ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.18),
-                  _buildStatCard(
-                    _books,
-                    'Books',
-                    Icons.menu_book_rounded,
-                    AppColors.lightGreen,
-                  ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.18),
-                  _buildStatCard(
-                    _quests,
-                    'Quests',
-                    Icons.local_fire_department_rounded,
-                    AppColors.lightGreen,
-                  ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.18),
-                ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final cardWidth =
+                      (constraints.maxWidth - 16) / statCrossAxisCount;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.spaceBetween,
+                    children: [
+                      SizedBox(
+                        width: cardWidth,
+                        child: _buildStatCard(
+                          _points,
+                          'Points',
+                          Icons.star_rounded,
+                          AppColors.accentYellow,
+                          compact: isLandscape,
+                        ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.18),
+                      ),
+                      SizedBox(
+                        width: cardWidth,
+                        child: _buildStatCard(
+                          _books,
+                          'Books',
+                          Icons.menu_book_rounded,
+                          AppColors.lightGreen,
+                          compact: isLandscape,
+                        ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.18),
+                      ),
+                      SizedBox(
+                        width: cardWidth,
+                        child: _buildStatCard(
+                          _quests,
+                          'Quests',
+                          Icons.local_fire_department_rounded,
+                          AppColors.lightGreen,
+                          compact: isLandscape,
+                        ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.18),
+                      ),
+                    ],
+                  );
+                },
               ),
 
-              const SizedBox(height: 40),
+              SizedBox(height: isLandscape ? 24 : 40),
 
               // Badges Section
               const Align(
@@ -611,10 +659,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 3,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 0.8,
+                crossAxisCount: badgeCrossAxisCount,
+                mainAxisSpacing: isLandscape ? 12 : 16,
+                crossAxisSpacing: isLandscape ? 12 : 16,
+                childAspectRatio: isLandscape ? 0.9 : 0.8,
                 children:
                     (_badges.isNotEmpty
                             ? _badges
@@ -633,7 +681,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           return _buildBadge(
                                 badge['icon'] as IconData,
                                 badge['color'] as Color,
-                                badge['name']?.toString(),
+                                label: badge['name']?.toString(),
+                                compact: isLandscape,
                               )
                               .animate()
                               .fadeIn(delay: (700 + (index * 80)).ms)
@@ -642,7 +691,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         .toList(),
               ),
 
-              const SizedBox(height: 28),
+              SizedBox(height: isLandscape ? 20 : 28),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(
@@ -767,7 +816,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                 },
               ).animate().fadeIn(delay: 1160.ms).slideY(begin: 0.16),
-              const SizedBox(height: 80),
+              SizedBox(height: isLandscape ? 32 : 80),
             ],
           ),
         ),
@@ -779,13 +828,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String value,
     String label,
     IconData icon,
-    Color color,
-  ) {
+    Color color, {
+    bool compact = false,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 14 : 20,
+        vertical: compact ? 12 : 16,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(compact ? 16 : 20),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -796,42 +849,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
+          Icon(icon, color: color, size: compact ? 28 : 32),
+          SizedBox(height: compact ? 6 : 8),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 20,
+            style: TextStyle(
+              fontSize: compact ? 18 : 20,
               fontWeight: FontWeight.bold,
               color: Color(0xFF333333),
             ),
           ),
           Text(
             label,
-            style: const TextStyle(fontSize: 14, color: Colors.blueGrey),
+            style: TextStyle(
+              fontSize: compact ? 12 : 14,
+              color: Colors.blueGrey,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBadge(IconData icon, Color color, [String? label]) {
+  Widget _buildBadge(
+    IconData icon,
+    Color color, {
+    String? label,
+    bool compact = false,
+  }) {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(compact ? 12 : 16),
           decoration: BoxDecoration(
             color: color.withOpacity(label == 'Locked' ? 0.05 : 0.15),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: color, size: 40),
+          child: Icon(icon, color: color, size: compact ? 32 : 40),
         ),
         if (label != null) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: compact ? 6 : 8),
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: compact ? 11 : 12,
               fontWeight: FontWeight.bold,
               color: label == 'Locked' ? Colors.grey.shade500 : Colors.blueGrey,
             ),

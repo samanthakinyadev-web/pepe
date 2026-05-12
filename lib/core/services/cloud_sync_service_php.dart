@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:elimupepe/models/ebook.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:elimupepe/core/services/php_api_service.dart';
@@ -43,12 +44,16 @@ class CloudSyncServicePhp {
               grade: cloudBook.grade,
             );
             await _databaseService.updateEbook(updatedBook);
-            print('Synced metadata for: ${localBook.title}');
+            if (kDebugMode) {
+              debugPrint('Synced metadata for: ${localBook.title}');
+            }
           }
         }
       }
     } catch (e) {
-      print('Error syncing downloaded book metadata: $e');
+      if (kDebugMode) {
+        debugPrint('Error syncing downloaded book metadata: $e');
+      }
     }
   }
 
@@ -63,7 +68,9 @@ class CloudSyncServicePhp {
         }
       }
     } catch (e) {
-      print('Error removing bundled books: $e');
+      if (kDebugMode) {
+        debugPrint('Error removing bundled books: $e');
+      }
     }
   }
 
@@ -79,7 +86,9 @@ class CloudSyncServicePhp {
           .where((book) => !localBookIds.contains(book.id))
           .toList();
     } catch (e) {
-      print('Error getting available cloud books (offline?): $e');
+      if (kDebugMode) {
+        debugPrint('Error getting available cloud books (offline?): $e');
+      }
       // Return empty list if offline - don't break the app
       return [];
     }
@@ -91,7 +100,9 @@ class CloudSyncServicePhp {
     Function(double)? onProgress,
   }) async {
     try {
-      print('Starting download for: ${cloudBook.title}');
+      if (kDebugMode) {
+        debugPrint('Starting download for: ${cloudBook.title}');
+      }
 
       // Get app's private storage directory
       final directory = await getApplicationDocumentsDirectory();
@@ -108,7 +119,9 @@ class CloudSyncServicePhp {
       if (downloadUrl.contains(' ') && !downloadUrl.contains('%20')) {
         downloadUrl = downloadUrl.replaceAll(' ', '%20');
       }
-      print('Download URL: $downloadUrl');
+      if (kDebugMode) {
+        debugPrint('Prepared download URL for: ${cloudBook.title}');
+      }
 
       // Sanitize filename
       final safeFileName = cloudBook.title
@@ -117,7 +130,9 @@ class CloudSyncServicePhp {
       final pdfPath = '${ebooksDir.path}/$safeFileName.pdf';
       String? thumbnailPath;
 
-      print('Saving to: $pdfPath');
+      if (kDebugMode) {
+        debugPrint('Saving book locally: ${cloudBook.title}');
+      }
 
       // Download PDF with progress tracking
       await _dio
@@ -125,7 +140,9 @@ class CloudSyncServicePhp {
             downloadUrl,
             pdfPath,
             onReceiveProgress: (received, total) {
-              print('Progress: $received / $total bytes');
+              if (kDebugMode) {
+                debugPrint('Book download progress: $received / $total bytes');
+              }
               if (total != -1 && onProgress != null) {
                 final progress = received / total;
                 onProgress(progress);
@@ -143,7 +160,9 @@ class CloudSyncServicePhp {
             },
           );
 
-      print('PDF downloaded successfully');
+      if (kDebugMode) {
+        debugPrint('PDF downloaded successfully');
+      }
 
       // Download thumbnail if available
       if (cloudBook.coverImagePath != null &&
@@ -157,7 +176,9 @@ class CloudSyncServicePhp {
         }
 
         try {
-          print('Downloading thumbnail: $coverUrl');
+          if (kDebugMode) {
+            debugPrint('Downloading thumbnail for: ${cloudBook.title}');
+          }
           thumbnailPath = '${ebooksDir.path}/$safeFileName.jpg';
           await _dio
               .download(
@@ -166,9 +187,13 @@ class CloudSyncServicePhp {
                 options: Options(receiveTimeout: const Duration(seconds: 60)),
               )
               .timeout(const Duration(minutes: 2));
-          print('Thumbnail downloaded successfully');
+          if (kDebugMode) {
+            debugPrint('Thumbnail downloaded successfully');
+          }
         } catch (e) {
-          print('Error downloading thumbnail: $e');
+          if (kDebugMode) {
+            debugPrint('Error downloading thumbnail: $e');
+          }
           thumbnailPath = null;
         }
       }
@@ -176,7 +201,9 @@ class CloudSyncServicePhp {
       // Get file size
       final file = File(pdfPath);
       final fileSize = await file.length();
-      print('File size: ${fileSize ~/ (1024 * 1024)} MB');
+      if (kDebugMode) {
+        debugPrint('Downloaded file size: ${fileSize ~/ (1024 * 1024)} MB');
+      }
 
       // Save to local database
       final localBook = Ebook(
@@ -195,11 +222,14 @@ class CloudSyncServicePhp {
       );
 
       await _databaseService.insertEbook(localBook);
-      print('Book saved to database');
-      print('Download complete for: ${cloudBook.title}');
+      if (kDebugMode) {
+        debugPrint('Book saved to database: ${cloudBook.title}');
+      }
       return true;
     } catch (e) {
-      print('Error downloading book: $e');
+      if (kDebugMode) {
+        debugPrint('Error downloading book: $e');
+      }
       return false;
     }
   }
@@ -211,14 +241,18 @@ class CloudSyncServicePhp {
       final bookIndex = localBooks.indexWhere((b) => b.id == bookId);
 
       if (bookIndex == -1) {
-        print('Book not found in database: $bookId');
+        if (kDebugMode) {
+          debugPrint('Book not found in database: $bookId');
+        }
         return false;
       }
 
       final book = localBooks[bookIndex];
       return _deleteBookRecord(book);
     } catch (e) {
-      print('Error deleting book: $e');
+      if (kDebugMode) {
+        debugPrint('Error deleting book: $e');
+      }
       return false;
     }
   }
@@ -230,10 +264,14 @@ class CloudSyncServicePhp {
         final pdfFile = File(book.localPath!);
         if (await pdfFile.exists()) {
           await pdfFile.delete();
-          print('Deleted PDF: ${book.localPath}');
+          if (kDebugMode) {
+            debugPrint('Deleted PDF: ${book.localPath}');
+          }
         }
       } catch (e) {
-        print('Error deleting PDF file: $e');
+        if (kDebugMode) {
+          debugPrint('Error deleting PDF file: $e');
+        }
       }
     }
 
@@ -243,15 +281,21 @@ class CloudSyncServicePhp {
         final thumbnailFile = File(book.coverImagePath!);
         if (await thumbnailFile.exists()) {
           await thumbnailFile.delete();
-          print('Deleted thumbnail: ${book.coverImagePath}');
+          if (kDebugMode) {
+            debugPrint('Deleted thumbnail: ${book.coverImagePath}');
+          }
         }
       } catch (e) {
-        print('Error deleting thumbnail: $e');
+        if (kDebugMode) {
+          debugPrint('Error deleting thumbnail: $e');
+        }
       }
     }
 
     await _databaseService.deleteEbook(book.id);
-    print('Removed from database: ${book.id}');
+    if (kDebugMode) {
+      debugPrint('Removed from database: ${book.id}');
+    }
     return true;
   }
 }

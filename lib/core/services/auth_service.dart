@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:elimupepe/core/utils/error_feedback.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:elimupepe/core/services/webview_session_service.dart';
 
@@ -208,6 +209,7 @@ class AuthService {
         );
         if (response.statusCode == 200 || response.statusCode == 204) {
           await _clearSavedSession();
+          await _clearRememberedLogin();
           await WebViewSessionService.clear();
           return true;
         }
@@ -218,6 +220,7 @@ class AuthService {
     }
 
     await _clearSavedSession();
+    await _clearRememberedLogin();
     await WebViewSessionService.clear();
     return false;
   }
@@ -513,6 +516,30 @@ class AuthService {
         await _secureStorage.delete(key: key);
       } catch (_) {
         // Ignore cleanup failures so corrupted secure storage never crashes auth.
+      }
+    }
+  }
+
+  Future<void> _clearRememberedLogin() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final key in const [
+        'remember_me',
+        'saved_student_id',
+        'saved_password',
+        'saved_email',
+      ]) {
+        await prefs.remove(key);
+      }
+    } catch (_) {
+      // Ignore preferences cleanup failures so account deletion can continue.
+    }
+
+    for (final key in const ['saved_student_id', 'saved_password']) {
+      try {
+        await _secureStorage.delete(key: key);
+      } catch (_) {
+        // Ignore cleanup failures so corrupted secure storage never blocks auth.
       }
     }
   }

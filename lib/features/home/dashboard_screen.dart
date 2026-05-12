@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
@@ -146,54 +147,67 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       return tab;
     });
 
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: const Color(0xFFF0F8FF),
-          body: IndexedStack(index: _selectedIndex, children: tabs),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _selectedIndex,
-            onTap: _onItemTapped,
-            type: BottomNavigationBarType.fixed,
-            selectedItemColor: AppColors.accentCoral,
-            unselectedItemColor: Colors.blueGrey.shade300,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined, size: 28),
-                activeIcon: Icon(Icons.home_rounded, size: 28),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.local_library_outlined, size: 28),
-                activeIcon: Icon(Icons.local_library_rounded, size: 28),
-                label: 'Library',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.bolt_outlined, size: 28),
-                activeIcon: Icon(Icons.bolt_rounded, size: 28),
-                label: 'Quest',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.menu_outlined, size: 28),
-                activeIcon: Icon(Icons.menu_rounded, size: 28),
-                label: 'Menu',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline_rounded, size: 28),
-                activeIcon: Icon(Icons.person_rounded, size: 28),
-                label: 'Profile',
-              ),
-            ],
-          ),
-        ),
-        if (_isOpeningStudentDashboard)
-          Container(
-            color: Colors.black.withValues(alpha: 0.5),
-            child: const Center(
-              child: CircularProgressIndicator(color: AppColors.lightGreen),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+
+        if (_selectedIndex != 0) {
+          await _onItemTapped(0);
+          return;
+        }
+
+        SystemNavigator.pop();
+      },
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: const Color(0xFFF0F8FF),
+            body: IndexedStack(index: _selectedIndex, children: tabs),
+            bottomNavigationBar: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: AppColors.accentCoral,
+              unselectedItemColor: Colors.blueGrey.shade300,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined, size: 28),
+                  activeIcon: Icon(Icons.home_rounded, size: 28),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.local_library_outlined, size: 28),
+                  activeIcon: Icon(Icons.local_library_rounded, size: 28),
+                  label: 'Library',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.bolt_outlined, size: 28),
+                  activeIcon: Icon(Icons.bolt_rounded, size: 28),
+                  label: 'Quest',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.menu_outlined, size: 28),
+                  activeIcon: Icon(Icons.menu_rounded, size: 28),
+                  label: 'Menu',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline_rounded, size: 28),
+                  activeIcon: Icon(Icons.person_rounded, size: 28),
+                  label: 'Profile',
+                ),
+              ],
             ),
           ),
-      ],
+          if (_isOpeningStudentDashboard)
+            Container(
+              color: Colors.black.withValues(alpha: 0.5),
+              child: const Center(
+                child: CircularProgressIndicator(color: AppColors.lightGreen),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -248,41 +262,55 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _getGreeting(),
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade800,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.brandGreen.withValues(alpha: 0.16),
+          border: Border.all(
+            color: AppColors.brandGreen.withValues(alpha: 0.3),
+          ),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Elimu Quest',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.brandGreen,
+                    ),
                   ),
-                ),
-                Text(
-                  "Let's continue your adventure!",
-                  style: TextStyle(fontSize: 14, color: Colors.blue.shade600),
-                ),
-              ],
+                  Text(
+                    "Let's continue your adventure!",
+                    style: TextStyle(fontSize: 14, color: Colors.blue.shade600),
+                  ),
+                ],
+              ),
             ),
-          ),
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: Colors.blue.shade100,
-            backgroundImage: _userAvatar != null
-                ? NetworkImage(_userAvatar!)
-                : null,
-            child: _userAvatar == null
-                ? Text(
-                    _userName[0].toUpperCase(),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  )
-                : null,
-          ),
-        ],
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: Colors.blue.shade100,
+              backgroundImage: _userAvatar != null
+                  ? NetworkImage(_userAvatar!)
+                  : null,
+              child: _userAvatar == null
+                  ? Text(
+                      (_userName.trim().isNotEmpty
+                              ? _userName.trim()[0]
+                              : '?')
+                          .toUpperCase(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    )
+                  : null,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -513,12 +541,20 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
         LearnerDashboardApiService.instance.fetchQuizzes(),
       ]);
 
-      final dashboard = results[0] as Map<String, dynamic>?;
-      final wallet = results[1] as Map<String, dynamic>?;
-      final streaks = results[2] as Map<String, dynamic>?;
-      final badges = results[3] as List<dynamic>;
-      final leaderboard = results[4] as List<dynamic>;
-      final quizzes = results[5] as List<dynamic>;
+      final dashboard = results[0] is Map<String, dynamic>
+          ? results[0] as Map<String, dynamic>
+          : null;
+      final wallet = results[1] is Map<String, dynamic>
+          ? results[1] as Map<String, dynamic>
+          : null;
+      final streaks = results[2] is Map<String, dynamic>
+          ? results[2] as Map<String, dynamic>
+          : null;
+      final badges = results[3] is List ? results[3] as List<dynamic> : const [];
+      final leaderboard = results[4] is List
+          ? results[4] as List<dynamic>
+          : const [];
+      final quizzes = results[5] is List ? results[5] as List<dynamic> : const [];
 
       final coins = _firstInt([
         wallet?['balance'],
@@ -593,13 +629,6 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       }
     }
     return 0;
-  }
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning, $_userName!';
-    if (hour < 17) return 'Good afternoon, $_userName!';
-    return 'Good evening, $_userName!';
   }
 
   Future<void> _launchWhatsApp() async {

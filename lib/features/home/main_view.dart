@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:elimupepe/features/home/category_items_screen.dart';
 import 'package:elimupepe/features/settings/webview_content_screen.dart';
 import 'package:elimupepe/features/quiz/learner_dashboard_api_service.dart';
+import 'package:elimupepe/features/auth/welcome_screen.dart';
 
 enum DashboardSection {
   overview,
@@ -66,7 +67,7 @@ class _MainViewState extends State<MainView> {
     ),
     _DashboardSectionInfo(
       section: DashboardSection.pillars,
-      label: 'Pillars',
+      label: 'Pathways',
       icon: Icons.grid_view_rounded,
     ),
     _DashboardSectionInfo(
@@ -227,6 +228,48 @@ class _MainViewState extends State<MainView> {
     );
   }
 
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.lightGreen,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout != true || !mounted) {
+      return;
+    }
+
+    await AuthService.instance.logout();
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -248,6 +291,11 @@ class _MainViewState extends State<MainView> {
             icon: const Icon(Icons.notifications_none_rounded),
             onPressed: () =>
                 widget.onNavigate(4), // View feedback/notifications
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            tooltip: 'Logout',
+            onPressed: _confirmLogout,
           ),
           const SizedBox(width: 8),
         ],
@@ -422,7 +470,7 @@ class _MainViewState extends State<MainView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSectionHeader(
-              "Core Learning Pillars",
+              "Core Learning Pathways",
               onTap: _showAllPillars,
               trailing: const Icon(
                 Icons.grid_view_rounded,
@@ -1654,7 +1702,7 @@ class _MainViewState extends State<MainView> {
                       ),
                       const SizedBox(height: 16),
                       const Text(
-                        "All Core Learning Pillars",
+                        "All Core Learning Pathways",
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,

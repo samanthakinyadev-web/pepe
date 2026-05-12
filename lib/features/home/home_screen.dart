@@ -258,7 +258,9 @@ class _HomeScreenState extends State<HomeScreen>
         LearnerDashboardApiService.instance.fetchBooks(),
         LearnerDashboardApiService.instance.fetchELibrary(),
       ]);
-      final cloudBooksFromPhp = results[0] as List<Ebook>;
+      final cloudBooksFromPhp = results[0] is List<Ebook>
+          ? results[0] as List<Ebook>
+          : const <Ebook>[];
       debugPrint('PhpApiService returned ${cloudBooksFromPhp.length} books');
 
       final Map<String, Ebook> cloudBooksMap = {};
@@ -936,15 +938,39 @@ class _HomeScreenState extends State<HomeScreen>
                 _searchQuery.trim().isNotEmpty && _isSearchActive
                 ? _buildSearchSuggestions(catalogBooks, _searchQuery)
                 : <Ebook>[];
+            final mediaQuery = MediaQuery.of(context);
+            final isLandscape = mediaQuery.orientation == Orientation.landscape;
+            final keyboardInset = mediaQuery.viewInsets.bottom;
+            final isCompactSearchMode = isLandscape && keyboardInset > 0;
+            final availableSuggestionHeight =
+                mediaQuery.size.height -
+                mediaQuery.padding.top -
+                mediaQuery.padding.bottom -
+                keyboardInset -
+                (isCompactSearchMode ? 180 : 260);
+            final suggestionMaxHeight = availableSuggestionHeight
+                .clamp(
+                  80.0,
+                  isCompactSearchMode
+                      ? 120.0
+                      : isLandscape
+                      ? 150.0
+                      : 220.0,
+                )
+                .toDouble();
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Search Bar
                 Padding(
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 12,
+                    vertical: isCompactSearchMode
+                        ? 4
+                        : isLandscape
+                        ? 8
+                        : 12,
                   ),
                   child: Row(
                     children: [
@@ -1030,19 +1056,41 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                       ),
+                      if (isCompactSearchMode) const SizedBox(width: 8),
+                      if (isCompactSearchMode)
+                        IconButton(
+                          tooltip: 'Done searching',
+                          onPressed: () {
+                            _searchFocusNode.unfocus();
+                            setState(() {
+                              _isSearchActive = false;
+                            });
+                          },
+                          icon: const Icon(
+                            Icons.keyboard_hide_rounded,
+                            color: AppColors.brandGreen,
+                          ),
+                        ),
                     ],
                   ),
                 ),
                 if (searchSuggestions.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      0,
+                      16,
+                      isCompactSearchMode ? 4 : 8,
+                    ),
                     child: Material(
                       color: Colors.white,
                       elevation: 4,
                       shadowColor: Colors.black12,
                       borderRadius: BorderRadius.circular(20),
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 220),
+                        constraints: BoxConstraints(
+                          maxHeight: suggestionMaxHeight,
+                        ),
                         child: ListView.separated(
                           shrinkWrap: true,
                           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1058,43 +1106,50 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                 // Tabs
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: TabBar(
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: Colors.transparent,
-                    indicator: BoxDecoration(
-                      color: AppColors.lightGreen,
+                if (!isCompactSearchMode)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(25),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.lightGreen.withValues(alpha: 0.3),
-                          blurRadius: 8,
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    labelColor: Colors.white,
-                    unselectedLabelColor: Colors.black54,
-                    labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                    tabs: const [
-                      Tab(text: 'Downloaded Books'),
-                      Tab(text: 'Get Books'),
-                    ],
+                    child: TabBar(
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      dividerColor: Colors.transparent,
+                      indicator: BoxDecoration(
+                        color: AppColors.lightGreen,
+                        borderRadius: BorderRadius.circular(25),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.lightGreen.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      labelColor: Colors.white,
+                      unselectedLabelColor: Colors.black54,
+                      labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                      tabs: const [
+                        Tab(text: 'Downloaded Books'),
+                        Tab(text: 'Get Books'),
+                      ],
+                    ),
                   ),
+                SizedBox(
+                  height: isCompactSearchMode
+                      ? 4
+                      : isLandscape
+                      ? 8
+                      : 16,
                 ),
-                const SizedBox(height: 16),
                 Expanded(
                   child: RefreshIndicator(
                     color: AppColors.lightGreen,
@@ -1527,31 +1582,104 @@ class _HomeScreenState extends State<HomeScreen>
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(16),
                   ),
-                  child: FutureBuilder<Uint8List?>(
-                    future: isDownloaded && book.localPath != null
-                        ? _getThumbnail(
-                            book.localPath!,
-                            coverImagePath: book.coverImagePath,
-                          )
-                        : Future.value(null),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData && snapshot.data != null) {
-                        return Image.memory(
-                          snapshot.data!,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        );
-                      } else if (remoteCoverUrl != null &&
-                          remoteCoverUrl.isNotEmpty) {
-                        return Image.network(
-                          remoteCoverUrl,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _buildPlaceholderCover(),
-                        );
-                      }
-                      return _buildPlaceholderCover();
-                    },
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: FutureBuilder<Uint8List?>(
+                          future: isDownloaded && book.localPath != null
+                              ? _getThumbnail(
+                                  book.localPath!,
+                                  coverImagePath: book.coverImagePath,
+                                )
+                              : Future.value(null),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && snapshot.data != null) {
+                              return Image.memory(
+                                snapshot.data!,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              );
+                            } else if (remoteCoverUrl != null &&
+                                remoteCoverUrl.isNotEmpty) {
+                              return Image.network(
+                                remoteCoverUrl,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) =>
+                                    _buildPlaceholderCover(),
+                              );
+                            }
+                            return _buildPlaceholderCover();
+                          },
+                        ),
+                      ),
+                      if (isRecommended)
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.55),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.28),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.star_rounded,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Recommended',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      if (isDownloaded)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Semantics(
+                            label: 'Delete downloaded book',
+                            button: true,
+                            child: Material(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              shape: const CircleBorder(),
+                              child: IconButton(
+                                constraints: const BoxConstraints(
+                                  minWidth: 36,
+                                  minHeight: 36,
+                                ),
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                                tooltip: 'Delete downloaded book',
+                                onPressed: () =>
+                                    _confirmDeleteDownloadedBook(book),
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -1581,153 +1709,56 @@ class _HomeScreenState extends State<HomeScreen>
                     style: const TextStyle(fontSize: 12, color: Colors.black54),
                   ),
 
-                  if (isRecommended) ...[
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.lightGreen.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: AppColors.lightGreen.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.star_rounded,
-                              size: 14,
-                              color: AppColors.lightGreen,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'Recommended',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.brandGreen,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-
                   const SizedBox(height: 8),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isCompactActionLayout = constraints.maxWidth < 180;
-
-                      if (!isDownloaded) {
-                        return SizedBox(
-                          width: double.infinity,
-                          child: isDownloading && progressNotifier != null
-                              ? ListenableBuilder(
-                                  listenable: progressNotifier,
-                                  builder: (context, child) {
-                                    final progress = progressNotifier.value;
-                                    return Column(
-                                      children: [
-                                        LinearProgressIndicator(
-                                          value: progress,
-                                          backgroundColor: Colors.grey[300],
-                                          valueColor:
-                                              const AlwaysStoppedAnimation<
-                                                Color
-                                              >(AppColors.lightGreen),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${(progress * 100).toStringAsFixed(0)}%',
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.black54,
+                  if (!isDownloaded)
+                    SizedBox(
+                      width: double.infinity,
+                      child: isDownloading && progressNotifier != null
+                          ? ListenableBuilder(
+                              listenable: progressNotifier,
+                              builder: (context, child) {
+                                final progress = progressNotifier.value;
+                                return Column(
+                                  children: [
+                                    LinearProgressIndicator(
+                                      value: progress,
+                                      backgroundColor: Colors.grey[300],
+                                      valueColor:
+                                          const AlwaysStoppedAnimation<Color>(
+                                            AppColors.lightGreen,
                                           ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                )
-                              : ElimuButton(
-                                  text: 'Download',
-                                  icon: Icons.download,
-                                  onPressed: () => _downloadBook(book),
-                                ),
-                        );
-                      }
-
-                      if (isCompactActionLayout) {
-                        return Column(
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElimuButton(
-                                text: 'Read',
-                                icon: Icons.menu_book,
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          ReaderScreen(ebook: book),
                                     ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElimuButton(
-                                text: 'Delete',
-                                icon: Icons.delete_outline_rounded,
-                                type: ElimuButtonType.outline,
-                                onPressed: () =>
-                                    _confirmDeleteDownloadedBook(book),
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: ElimuButton(
-                              text: 'Read',
-                              icon: Icons.menu_book,
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        ReaderScreen(ebook: book),
-                                  ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${(progress * 100).toStringAsFixed(0)}%',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
                                 );
                               },
+                            )
+                          : ElimuButton(
+                              text: 'Download',
+                              icon: Icons.download,
+                              onPressed: () => _downloadBook(book),
                             ),
+                    )
+                  else
+                    ElimuButton(
+                      text: 'Read',
+                      icon: Icons.menu_book,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ReaderScreen(ebook: book),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElimuButton(
-                              text: 'Delete',
-                              icon: Icons.delete_outline_rounded,
-                              type: ElimuButtonType.outline,
-                              onPressed: () =>
-                                  _confirmDeleteDownloadedBook(book),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
