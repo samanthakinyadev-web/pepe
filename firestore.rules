@@ -1,0 +1,197 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers ----------
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function hasTenant() {
+      return isAuthed() && request.auth.token.tenantId is string
+        && request.auth.token.tenantId.size() > 0;
+    }
+
+    function belongsToTenant(tenantId) {
+      return hasTenant() && request.auth.token.tenantId == tenantId;
+    }
+
+    function hasRole(role) {
+      return isAuthed() && request.auth.token.role == role;
+    }
+
+    function isTenantAdmin(tenantId) {
+      return belongsToTenant(tenantId) && hasRole('school_admin');
+    }
+
+    function isTeacher(tenantId) {
+      return belongsToTenant(tenantId) && (
+        hasRole('teacher') || hasRole('school_admin')
+      );
+    }
+
+    function isStudent(tenantId) {
+      return belongsToTenant(tenantId) && hasRole('student');
+    }
+
+    // The signed-in user is the same as the {userId} being read/written.
+    function isSelf(userId) {
+      return isAuthed() && request.auth.uid == userId;
+    }
+
+    // ---------- /tenants/{tenantId} ----------
+    match /tenants/{tenantId} {
+
+      // Any authenticated user belonging to the tenant can read tenant metadata.
+      allow read: if belongsToTenant(tenantId);
+
+      // Only server-side (Admin SDK / Cloud Functions) creates tenants.
+      // Clients must never be able to create or mutate the tenant doc.
+      allow create, update, delete: if false;
+
+      // ---------- /tenants/{tenantId}/users/{userId} ----------
+      match /users/{userId} {
+        // Tenant members can list/look up other members of the same tenant.
+        allow read: if belongsToTenant(tenantId);
+
+        // A user can create their own profile document. Server must enforce
+        // that tenantId on the doc matches the user's claim before write.
+        allow create: if isSelf(userId)
+          && belongsToTenant(tenantId)
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.uid == userId
+          && request.resource.data.role in ['student', 'teacher', 'school_admin'];
+
+        // A user can update their own non-privileged fields. tenantId/role/uid
+        // are immutable from the client (only the Admin SDK may change roles).
+        allow update: if isSelf(userId)
+          && belongsToTenant(tenantId)
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.uid == userId
+          && request.resource.data.role == resource.data.role;
+
+        // School admins can manage any user inside their tenant.
+        allow update, delete: if isTenantAdmin(tenantId)
+          && request.resource.data.tenantId == tenantId;
+
+        // A user can delete their own account record.
+        allow delete: if isSelf(userId) || isTenantAdmin(tenantId);
+      }
+
+      // ---------- /tenants/{tenantId}/courses/{courseId} ----------
+      match /courses/{courseId} {
+        // Any tenant member can read published courses.
+        allow read: if belongsToTenant(tenantId)
+          && (resource == null || resource.data.status == 'published' || isTeacher(tenantId));
+
+        // Only teachers/admins can create courses. tenantId + courseId must match.
+        allow create: if isTeacher(tenantId)
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.courseId == courseId
+          && request.resource.data.status in ['draft', 'published', 'archived'];
+
+        // Teachers/admins can update. studentCount is server-maintained —
+        // clients must not change it. We compare the incoming value to the
+        // current value; if they differ, the client must not be the writer.
+        allow update: if isTeacher(tenantId)
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.studentCount == resource.data.studentCount;
+
+        // Only school admins can hard-delete a course.
+        allow delete: if isTenantAdmin(tenantId);
+
+        // ---------- /tenants/{tenantId}/courses/{courseId}/modules/{moduleId} ----------
+        match /modules/{moduleId} {
+          allow read: if belongsToTenant(tenantId)
+            && (resource == null || resource.data.isPublished == true || isTeacher(tenantId));
+
+          allow create, update, delete: if isTeacher(tenantId);
+
+          // ---------- /tenants/{tenantId}/courses/{courseId}/modules/{moduleId}/lessons/{lessonId} ----------
+          match /lessons/{lessonId} {
+            // Students can read free previews; teachers/admins can read all.
+            allow read: if belongsToTenant(tenantId)
+              && (resource == null
+                  || resource.data.isFreePreview == true
+                  || isTeacher(tenantId));
+
+            allow create, update, delete: if isTeacher(tenantId);
+          }
+        }
+
+        // ---------- /tenants/{tenantId}/courses/{courseId}/assignments/{assignmentId} ----------
+        match /assignments/{assignmentId} {
+          allow read: if belongsToTenant(tenantId)
+            && (isTeacher(tenantId) || isStudent(tenantId));
+
+          allow create, update, delete: if isTeacher(tenantId)
+            && request.resource.data.tenantId == tenantId
+            && request.resource.data.courseId == courseId
+            && request.resource.data.assignmentId == assignmentId
+            && request.resource.data.maxPoints is number
+            && request.resource.data.maxPoints > 0;
+
+          // ---------- /tenants/{tenantId}/courses/{courseId}/assignments/{assignmentId}/submissions/{submissionId} ----------
+          // submissionId MUST equal the student's uid (one primary submission per
+          // student per assignment). The student creates their own submission;
+          // teachers/admins grade by updating the same doc.
+          match /submissions/{submissionId} {
+            // Students read their own; teachers/admins read all in their tenant.
+            allow read: if belongsToTenant(tenantId)
+              && (isTeacher(tenantId) || isSelf(submissionId));
+
+            // Student creates their own submission. The submissionId must equal
+            // the student's uid. The doc must be in the correct tenant/course.
+            allow create: if isStudent(tenantId)
+              && isSelf(submissionId)
+              && request.resource.data.tenantId == tenantId
+              && request.resource.data.courseId == courseId
+              && request.resource.data.assignmentId == assignmentId
+              && request.resource.data.studentUid == submissionId
+              && request.resource.data.status in ['submitted', 'graded', 'late']
+              && request.resource.data.grade == null;
+
+            // Students can update their own submission ONLY to attach files /
+            // resubmit before grading. Once grade is set, only teachers may touch it.
+            allow update: if isStudent(tenantId)
+              && isSelf(submissionId)
+              && belongsToTenant(tenantId)
+              && resource.data.grade == null
+              && request.resource.data.grade == null
+              && request.resource.data.studentUid == submissionId
+              && request.resource.data.tenantId == tenantId;
+
+            // Teachers/admins grade by setting `grade` on the existing doc.
+            allow update: if isTeacher(tenantId)
+              && resource.data.tenantId == tenantId
+              && request.resource.data.tenantId == tenantId
+              && request.resource.data.studentUid == resource.data.studentUid;
+
+            // Hard-delete only by a school admin.
+            allow delete: if isTenantAdmin(tenantId);
+          }
+        }
+      }
+
+      // ---------- /tenants/{tenantId}/grades/{gradeId} ----------
+      // Denormalized ledger for fast transcripts / report cards. Written by
+      // a Cloud Function (or trusted backend) on submission grading; clients
+      // can only read.
+      match /grades/{gradeId} {
+        allow read: if belongsToTenant(tenantId)
+          && (isTeacher(tenantId)
+              || (isStudent(tenantId)
+                  && resource.data.studentUid == request.auth.uid));
+
+        // No client writes. Only Admin SDK / Cloud Functions may mutate grades.
+        allow write: if false;
+      }
+    }
+
+    // Deny everything else by default. Any collection not matched above is
+    // unreachable from the client.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

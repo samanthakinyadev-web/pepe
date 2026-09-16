@@ -1,0 +1,54 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function hasTenant() {
+      return isAuthed() && request.auth.token.tenantId is string
+        && request.auth.token.tenantId.size() > 0;
+    }
+
+    function belongsToTenant(tenantId) {
+      return hasTenant() && request.auth.token.tenantId == tenantId;
+    }
+
+    function isTeacher(tenantId) {
+      return belongsToTenant(tenantId) && (
+        request.auth.token.role == 'teacher' ||
+        request.auth.token.role == 'school_admin'
+      );
+    }
+
+    function isStudent(tenantId) {
+      return belongsToTenant(tenantId)
+        && request.auth.token.role == 'student';
+    }
+
+    // Tenant-scoped bucket: /tenants/{tenantId}/...
+    match /tenants/{tenantId}/{allPaths=**} {
+      // Anyone in the tenant can read content (lessons, attachments, etc.).
+      // Tighten per-path if you need private-only files.
+      allow read: if belongsToTenant(tenantId);
+
+      // Teachers / admins can upload course + assignment + grading material.
+      allow write: if isTeacher(tenantId)
+        && request.resource.size < 25 * 1024 * 1024; // 25 MB cap
+
+      // Students can upload only to their own submission folder.
+      // Path: /tenants/{tenantId}/courses/{courseId}/submissions/{studentUid}/{file}
+      allow write: if isStudent(tenantId)
+        && allPaths.size() >= 3
+        && allPaths[2] == 'submissions'
+        && allPaths[3] == request.auth.uid
+        && request.resource.size < 25 * 1024 * 1024;
+    }
+
+    // Default deny everything outside the tenant namespace.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -19,8 +19,7 @@ class UserDataService {
       if (kDebugMode) {
         print('Error fetching user profile: $e');
       }
-      // Propagate the error for the UI to handle.
-      rethrow;
+      return null;
     }
   }
 
@@ -39,7 +38,7 @@ class UserDataService {
       if (kDebugMode) {
         print('Error fetching notifications: $e');
       }
-      rethrow;
+      return [];
     }
   }
 
@@ -69,7 +68,7 @@ class UserDataService {
       if (kDebugMode) {
         print('Error fetching grades: $e');
       }
-      rethrow;
+      return null;
     }
   }
 

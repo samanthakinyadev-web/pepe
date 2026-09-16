@@ -336,6 +336,21 @@ class LearnerDashboardApiService {
       return null;
     }
 
+    final mobileWebviewTarget = _inferMobileWebviewTarget(targetUrl);
+    if (mobileWebviewTarget != null) {
+      try {
+        final mobileLink = await _generateMobileWebviewLink(
+          type: mobileWebviewTarget['type']!,
+          bookId: mobileWebviewTarget['bookId']!,
+        );
+        if (mobileLink != null) {
+          return mobileLink;
+        }
+      } on DioException {
+        // Fallback to legacy webview token flow below.
+      }
+    }
+
     final intendedPath = _buildIntendedPath(targetUrl);
     final targetPath = intendedPath ?? targetUrl;
     final payloadCandidates = <Map<String, dynamic>>[
@@ -418,6 +433,57 @@ class LearnerDashboardApiService {
             // Try the next payload shape for the legacy GET endpoint.
           }
         }
+      }
+    }
+
+    return null;
+  }
+
+  Future<String?> _generateMobileWebviewLink({
+    required String type,
+    required String bookId,
+  }) async {
+    final response = await _dio.post(
+      '/webview/generate-link/$type/$bookId',
+      data: const {},
+      options: await _authorizedOptions(),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      return null;
+    }
+
+    return _extractWebviewLoginUrl(response.data);
+  }
+
+  Map<String, String>? _inferMobileWebviewTarget(String? targetUrl) {
+    if (targetUrl == null || targetUrl.trim().isEmpty) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(targetUrl.trim());
+    if (uri == null) {
+      return null;
+    }
+
+    final path = uri.path.toLowerCase();
+    final segments = uri.pathSegments;
+
+    if (path == '/dals' || path.endsWith('/dals')) {
+      return {'type': 'dals', 'bookId': '1'};
+    }
+
+    if (path == '/esoma' || path.endsWith('/esoma')) {
+      return {'type': 'esoma', 'bookId': '1'};
+    }
+
+    final simulationIndex = segments.indexWhere(
+      (segment) => segment.toLowerCase() == 'simulations',
+    );
+    if (simulationIndex >= 0 && simulationIndex + 1 < segments.length) {
+      final simulationId = segments[simulationIndex + 1];
+      if (simulationId.isNotEmpty) {
+        return {'type': 'phet', 'bookId': simulationId};
       }
     }
 
@@ -776,7 +842,7 @@ class LearnerDashboardApiService {
         payload['redirect_url'] ??
         payload['url'];
     if (direct is String && direct.trim().isNotEmpty) {
-      return direct.trim();
+      return _normalizeReturnedWebviewUrl(direct.trim());
     }
 
     final data = payload['data'];
@@ -788,17 +854,38 @@ class LearnerDashboardApiService {
           data['login_url'] ??
           data['redirect_url'];
       if (nested is String && nested.trim().isNotEmpty) {
-        return nested.trim();
+        return _normalizeReturnedWebviewUrl(nested.trim());
       }
     }
 
     final fallback =
         payload['url'] ?? payload['login_url'] ?? payload['redirect_url'];
     if (fallback is String && fallback.trim().isNotEmpty) {
-      return fallback.trim();
+      return _normalizeReturnedWebviewUrl(fallback.trim());
     }
 
     return null;
+  }
+
+  String _normalizeReturnedWebviewUrl(String rawUrl) {
+    final parsed = Uri.tryParse(rawUrl);
+    if (parsed == null) {
+      return rawUrl;
+    }
+
+    final host = parsed.host.toLowerCase();
+    if (host == '127.0.0.1' || host == 'localhost') {
+      final productionHost = Uri.parse(_webHost);
+      return parsed
+          .replace(
+            scheme: productionHost.scheme,
+            host: productionHost.host,
+            port: productionHost.hasPort ? productionHost.port : null,
+          )
+          .toString();
+    }
+
+    return rawUrl;
   }
 
   List<dynamic> _extractItems(dynamic data) {

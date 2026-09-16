@@ -61,3 +61,4 @@ android/**/*.keystore
 # Bundled ebook assets (large files, keep out of git)
 /android/app/src/main/assets/ebooks/
 /android/app/src/main/assets/ebooks/**
+elimupepe-8acc4-firebase-adminsdk-*.json

@@ -392,7 +392,19 @@ class _CategoryItemsScreenState extends State<CategoryItemsScreen> {
     }
 
     String finalUrl = normalizedUrl;
-    if (_shouldWrapWithWebviewLogin(normalizedUrl)) {
+    if (widget.menuItem.id == 'virtual_labs' && item is Map<String, dynamic>) {
+      final simulationId =
+          item['phet_id']?.toString() ?? item['id']?.toString() ?? '';
+      if (simulationId.isNotEmpty) {
+        final webviewLoginUrl = await LearnerDashboardApiService.instance
+            .fetchWebviewLoginUrl(
+              targetUrl: '${AppEndpoints.webBaseUrl}/phet/simulations/$simulationId',
+            );
+        if (webviewLoginUrl != null) {
+          finalUrl = webviewLoginUrl;
+        }
+      }
+    } else if (_shouldWrapWithWebviewLogin(normalizedUrl)) {
       final webviewLoginUrl = await LearnerDashboardApiService.instance
           .fetchWebviewLoginUrl(targetUrl: normalizedUrl);
       if (webviewLoginUrl == null) {
