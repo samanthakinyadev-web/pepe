@@ -7,7 +7,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:elimupepe/core/widgets/elimu_button.dart';
 import 'package:elimupepe/core/widgets/elimu_card.dart';
 import 'package:elimupepe/core/config/app_endpoints.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -232,28 +231,6 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
   // --- UI COMPONENTS ---
 
   Widget _buildDashboardContent() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallPhone = screenWidth < 360;
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    final horizontalPadding = isSmallPhone ? 16.0 : 24.0;
-    final sectionGap = isSmallPhone ? 14.0 : 18.0;
-
-    Widget summaryButton = Padding(
-      padding: EdgeInsets.symmetric(horizontal: isLandscape ? 0 : horizontalPadding),
-      child: _questLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.lightGreen,
-              ),
-            )
-          : ElimuButton(
-              text: 'View Progress Summary',
-              onPressed: _showQuestSummaryDialog,
-              type: ElimuButtonType.secondary,
-              icon: Icons.bar_chart_rounded,
-            ),
-    );
-
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: _loadQuestData,
@@ -261,50 +238,16 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(horizontalPadding: horizontalPadding),
-              SizedBox(height: sectionGap),
-              if (isLandscape)
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            _buildQuestCard(horizontalPadding: 0),
-                            SizedBox(height: sectionGap),
-                            summaryButton,
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: sectionGap),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            _buildLeaderboardCard(horizontalPadding: 0),
-                            SizedBox(height: sectionGap),
-                            _buildSupportSection(horizontalPadding: 0),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Column(
-                  children: [
-                    _buildQuestCard(horizontalPadding: horizontalPadding),
-                    SizedBox(height: sectionGap),
-                    summaryButton,
-                    SizedBox(height: sectionGap),
-                    _buildLeaderboardCard(horizontalPadding: horizontalPadding),
-                    SizedBox(height: isSmallPhone ? 16 : 20),
-                    _buildSupportSection(horizontalPadding: horizontalPadding),
-                  ],
-                ),
+              _buildHeader(),
+              const SizedBox(height: 24),
+              _buildQuestSummary(),
+              const SizedBox(height: 20),
+              _buildQuestCard(),
+              const SizedBox(height: 30),
+              _buildSupportSection(),
+              const SizedBox(height: 20),
+              _buildLeaderboardCard(),
               const SizedBox(height: 80),
             ],
           ).animate().fadeIn(duration: 500.ms),
@@ -313,243 +256,174 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
     );
   }
 
-  Widget _buildHeader({required double horizontalPadding}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallPhone = screenWidth < 360;
-    final titleSize = isSmallPhone ? 19.0 : 23.0;
-    final subtitleSize = isSmallPhone ? 12.0 : 13.0;
-    final avatarRadius = isSmallPhone ? 22.0 : 26.0;
-    final boltIconSize = isSmallPhone ? 24.0 : 28.0;
+  // Rest of your helper methods (Header, QuestCard, SupportSection, Update Logic)...
+  // (Assuming they remain the same as your original code)
 
+  Widget _buildHeader() {
     return Padding(
-      padding: EdgeInsets.fromLTRB(horizontalPadding, 14, horizontalPadding, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.bolt_rounded,
-                      color: AppColors.accentYellow,
-                      size: boltIconSize,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Quest Hub',
-                      style: TextStyle(
-                        fontSize: titleSize,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.brandGreen,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "Ready for your next challenge, ${_userName.split(' ').first}?",
-                  style: TextStyle(
-                    fontSize: subtitleSize,
-                    color: AppColors.textMuted,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.brandGreen.withValues(alpha: 0.16),
+          border: Border.all(
+            color: AppColors.brandGreen.withValues(alpha: 0.3),
           ),
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.lightGreen.withValues(alpha: 0.2),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-              border: Border.all(color: Colors.white, width: 3),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Elimu Quest',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.brandGreen,
+                    ),
+                  ),
+                  Text(
+                    "Let's continue your adventure!",
+                    style: TextStyle(fontSize: 14, color: Colors.blue.shade600),
+                  ),
+                ],
+              ),
             ),
-            child: CircleAvatar(
-              radius: avatarRadius,
-              backgroundColor: AppColors.surfaceGray,
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: Colors.blue.shade100,
               backgroundImage: _userAvatar != null
                   ? NetworkImage(_userAvatar!)
                   : null,
               child: _userAvatar == null
                   ? Text(
-                      (_userName.trim().isNotEmpty ? _userName.trim()[0] : '?')
+                      (_userName.trim().isNotEmpty
+                              ? _userName.trim()[0]
+                              : '?')
                           .toUpperCase(),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: isSmallPhone ? 15 : 17,
-                        color: AppColors.brandGreen,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     )
                   : null,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildQuestCard({required double horizontalPadding}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallPhone = screenWidth < 360;
-
+  Widget _buildQuestCard() {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          ElimuCard(
-            onTap: () => _openProtectedWebView(
-              title: 'Elimu Quest',
-              intendedPath: '/my-quizzes',
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ElimuCard(
+        onTap: () => _openProtectedWebView(
+          title: 'Elimu Quest',
+          intendedPath: '/my-quizzes',
+        ),
+        backgroundColor: AppColors.brandGreen,
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.local_fire_department_rounded,
+              color: AppColors.accentYellow,
+              size: 32,
             ),
-            padding: EdgeInsets.zero,
-            backgroundColor: AppColors.brandGreen,
-            borderColor: AppColors.brandGreen.withValues(alpha: 0.8),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.brandGreen, AppColors.lightGreen],
-                ),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              padding: EdgeInsets.fromLTRB(
-                isSmallPhone ? 14 : 18,
-                isSmallPhone ? 18 : 22,
-                isSmallPhone ? 14 : 18,
-                isSmallPhone ? 16 : 20,
-              ),
+            const SizedBox(width: 12),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isSmallPhone ? 12 : 16,
-                      vertical: isSmallPhone ? 6 : 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.local_fire_department_rounded,
-                          color: AppColors.accentYellow,
-                          size: isSmallPhone ? 16 : 18,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _questCount > 0
-                              ? '$_questCount NEW QUESTS'
-                              : 'DAILY QUEST',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: isSmallPhone ? 11 : 13,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: isSmallPhone ? 10 : 14),
-                  Text(
+                  const Text(
                     'Elimu Quest',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isSmallPhone ? 22 : 28,
-                      fontWeight: FontWeight.w900,
-                      height: 1.1,
-                      letterSpacing: -1,
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
-                    'Complete missions to earn LohoCoins\nand climb the leaderboard.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: isSmallPhone ? 12 : 13,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4,
-                    ),
-                  ),
-                  SizedBox(height: isSmallPhone ? 12 : 16),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(
-                      vertical: isSmallPhone ? 10 : 12,
-                    ),
-                    decoration: BoxDecoration(
+                    _questCount > 0
+                        ? 'You have $_questCount quiz challenges ready.'
+                        : 'Start today\'s mission and earn LohoCoins!',
+                    style: const TextStyle(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.brandGreen.withValues(alpha: 0.35),
-                          offset: const Offset(0, 4),
-                          blurRadius: 12,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'START PLAYING',
-                          style: TextStyle(
-                            color: AppColors.brandGreen,
-                            fontWeight: FontWeight.w900,
-                            fontSize: isSmallPhone ? 12 : 14,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Icon(
-                          Icons.sports_esports_rounded,
-                          color: AppColors.brandGreen,
-                          size: isSmallPhone ? 18 : 20,
-                        ),
-                      ],
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
             ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuestSummary() {
+    if (_questLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24),
+        child: SizedBox(
+          height: 130,
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.lightGreen),
           ),
-          Positioned(
-            top: isSmallPhone ? -12 : -20,
-            right: isSmallPhone ? 12 : 20,
-            child: Container(
-              padding: EdgeInsets.all(isSmallPhone ? 12 : 16),
-              decoration: BoxDecoration(
-                color: AppColors.accentYellow,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 4),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuestStatTile(
+                  label: 'Coins',
+                  value: _coins.toString(),
+                  icon: Icons.monetization_on_rounded,
+                  color: AppColors.accentYellow,
+                ),
               ),
-              child: Icon(
-                Icons.extension_rounded,
-                color: Colors.white,
-                size: isSmallPhone ? 28 : 40,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildQuestStatTile(
+                  label: 'Streak',
+                  value: '$_streakDays d',
+                  icon: Icons.local_fire_department_rounded,
+                  color: AppColors.accentOrange,
+                ),
               ),
-            ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuestStatTile(
+                  label: 'Badges',
+                  value: _badgeCount.toString(),
+                  icon: Icons.workspace_premium_rounded,
+                  color: AppColors.lightGreen,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildQuestStatTile(
+                  label: 'Rank',
+                  value: _leaderboardRank > 0 ? '#$_leaderboardRank' : '-',
+                  icon: Icons.emoji_events_rounded,
+                  color: Colors.orange.shade500,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -563,18 +437,16 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
     required Color color,
   }) {
     return ElimuCard(
-      backgroundColor: Colors.white,
-      borderColor: color.withValues(alpha: 0.3),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
+              color: color.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -586,17 +458,13 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
                   style: const TextStyle(
                     color: AppColors.textMain,
                     fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(color: Colors.blueGrey, fontSize: 13),
                 ),
               ],
             ),
@@ -606,274 +474,53 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
     );
   }
 
-  Widget _buildSupportSection({required double horizontalPadding}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallPhone = screenWidth < 360;
-
+  Widget _buildSupportSection() {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          ElimuCard(
-            onTap: _launchWhatsApp,
-            padding: EdgeInsets.zero,
-            backgroundColor: AppColors.brandGreen,
-            borderColor: AppColors.brandGreen.withValues(alpha: 0.4),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.brandGreen.withValues(alpha: 0.08),
-                    offset: const Offset(0, 8),
-                    blurRadius: 16,
-                  ),
-                ],
-              ),
-              padding: EdgeInsets.all(isSmallPhone ? 16 : 24),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Need Support?',
-                          style: TextStyle(
-                            color: AppColors.textMain,
-                            fontSize: isSmallPhone ? 15 : 17,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Chat with us on WhatsApp for quick help.',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: isSmallPhone ? 12 : 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: isSmallPhone ? 12 : 20),
-                  Container(
-                    padding: EdgeInsets.all(isSmallPhone ? 10 : 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.brandGreen.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.support_agent_rounded,
-                      color: AppColors.brandGreen,
-                      size: isSmallPhone ? 24 : 32,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ListTile(
+        tileColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          "Need Support?",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: const Text(
+          'Chat with us on WhatsApp for help, feedback, or bug reports.',
+          style: TextStyle(color: Colors.blueGrey),
+        ),
+        trailing: const Icon(Icons.chat_rounded, color: AppColors.accentOrange),
+        onTap: _launchWhatsApp,
       ),
     );
   }
 
-  Widget _buildLeaderboardCard({required double horizontalPadding}) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallPhone = screenWidth < 360;
-
+  Widget _buildLeaderboardCard() {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          ElimuCard(
-            onTap: () => _openProtectedWebView(
-              title: 'Leaderboard',
-              intendedPath: '/leaderboard/embed',
-            ),
-            padding: EdgeInsets.zero,
-            backgroundColor: AppColors.primaryBlue,
-            borderColor: AppColors.primaryBlue.withValues(alpha: 0.8),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.primaryBlue, AppColors.deepBlue],
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ElimuCard(
+        onTap: () => _openProtectedWebView(
+          title: 'Leaderboard',
+          intendedPath: '/leaderboard/embed',
+        ),
+        backgroundColor: Colors.orange.shade500,
+        padding: const EdgeInsets.all(18),
+        child: const Row(
+          children: [
+            Icon(Icons.emoji_events_rounded, color: Colors.white, size: 28),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Leaderboard: See the Top Learners',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              padding: EdgeInsets.all(isSmallPhone ? 16 : 24),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'HALL OF FAME',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: isSmallPhone ? 10 : 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: isSmallPhone ? 12 : 16),
-                        Text(
-                          'Leaderboard',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: isSmallPhone ? 19 : 22,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'See where you rank among top learners',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: isSmallPhone ? 12 : 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: isSmallPhone ? 10 : 16),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.white54,
-                    size: isSmallPhone ? 16 : 20,
-                  ),
-                ],
               ),
             ),
-          ),
-          Positioned(
-            top: isSmallPhone ? -10 : -15,
-            right: isSmallPhone ? 14 : 24,
-            child: Container(
-              padding: EdgeInsets.all(isSmallPhone ? 10 : 14),
-              decoration: BoxDecoration(
-                color: AppColors.accentYellow,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.emoji_events_rounded,
-                color: Colors.white,
-                size: isSmallPhone ? 28 : 36,
-              ),
-            ),
-          ),
-        ],
+            Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
+          ],
+        ),
       ),
-    );
-  }
-
-  Future<void> _showQuestSummaryDialog() async {
-    await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          title: const Text(
-            'Your Progress Summary',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AppColors.brandGreen,
-            ),
-          ),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.8,
-            child: _buildQuestSummaryGrid(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('CLOSE'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildQuestSummaryGrid() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildQuestStatTile(
-                label: 'Coins',
-                value: _coins.toString(),
-                icon: Icons.monetization_on_rounded,
-                color: AppColors.accentYellow,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildQuestStatTile(
-                label: 'Streak',
-                value: '$_streakDays d',
-                icon: Icons.local_fire_department_rounded,
-                color: AppColors.accentOrange,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildQuestStatTile(
-                label: 'Badges',
-                value: _badgeCount.toString(),
-                icon: Icons.workspace_premium_rounded,
-                color: AppColors.lightGreen,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildQuestStatTile(
-                label: 'Rank',
-                value: _leaderboardRank > 0 ? '#$_leaderboardRank' : '-',
-                icon: Icons.emoji_events_rounded,
-                color: Colors.orange.shade500,
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 
@@ -903,15 +550,11 @@ class _GamifiedDashboardScreenState extends State<GamifiedDashboardScreen> {
       final streaks = results[2] is Map<String, dynamic>
           ? results[2] as Map<String, dynamic>
           : null;
-      final badges = results[3] is List
-          ? results[3] as List<dynamic>
-          : const [];
+      final badges = results[3] is List ? results[3] as List<dynamic> : const [];
       final leaderboard = results[4] is List
           ? results[4] as List<dynamic>
           : const [];
-      final quizzes = results[5] is List
-          ? results[5] as List<dynamic>
-          : const [];
+      final quizzes = results[5] is List ? results[5] as List<dynamic> : const [];
 
       final coins = _firstInt([
         wallet?['balance'],

@@ -421,28 +421,24 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
 
-    try {
-      final apiData = await UserDataService.instance.fetchUserProfile();
-      if (apiData == null) return;
-      final userData = apiData['data'] ?? apiData['user'] ?? apiData;
-      if (userData is! Map<String, dynamic>) return;
+    final apiData = await UserDataService.instance.fetchUserProfile();
+    if (apiData == null) return;
+    final userData = apiData['data'] ?? apiData['user'] ?? apiData;
+    if (userData is! Map<String, dynamic>) return;
 
-      final fetched = _extractGradeFromProfile(userData);
-      if (fetched == null || fetched.isEmpty) return;
+    final fetched = _extractGradeFromProfile(userData);
+    if (fetched == null || fetched.isEmpty) return;
 
-      if (mounted) {
-        setState(() {
-          _learnerGrade = fetched;
-          _selectedCourse = fetched;
-        });
-      } else {
+    if (mounted) {
+      setState(() {
         _learnerGrade = fetched;
         _selectedCourse = fetched;
-      }
-      await prefs.setString('grade', fetched);
-    } catch (e) {
-      debugPrint('Error loading learner grade from profile: $e');
+      });
+    } else {
+      _learnerGrade = fetched;
+      _selectedCourse = fetched;
     }
+    await prefs.setString('grade', fetched);
   }
 
   String? _extractGradeFromProfile(Map<String, dynamic> userData) {

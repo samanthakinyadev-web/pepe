@@ -47,7 +47,7 @@ class MainView extends StatefulWidget {
 
 class _MainViewState extends State<MainView> {
   String _userName = "Learner";
-  String _grade = "";
+  String _grade = "Grade 4 - Middle School";
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _sectionScrollController = ScrollController();
   bool _showWeeklySummary = false;
@@ -57,7 +57,6 @@ class _MainViewState extends State<MainView> {
   List<Competency> _competencies = [];
   String _weeklyGoalTitle = "Loading...";
   double _weeklyProgress = 0.0;
-  int _openTaskCount = 0;
   bool _isLoading = true;
 
   static const List<_DashboardSectionInfo> _dashboardSections = [
@@ -121,43 +120,41 @@ class _MainViewState extends State<MainView> {
 
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
+    await _fetchUserProfile();
+    await _fetchCompetencies();
+    await _fetchWeeklyGoal();
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchCompetencies() async {
     try {
-      await _fetchUserProfile();
-
-      final results = await Future.wait<dynamic>([
-        LearnerDashboardApiService.instance.fetchCompetencies(),
-        LearnerDashboardApiService.instance.fetchWeeklyGoal(),
-        LearnerDashboardApiService.instance.fetchQuizzes(),
-      ]);
-
-      final competencies = results[0] is List
-          ? results[0] as List<dynamic>
-          : const [];
-      final weeklyGoal = results[1] is Map<String, dynamic>
-          ? results[1] as Map<String, dynamic>
-          : null;
-      final quizzes = results[2] is List
-          ? results[2] as List<dynamic>
-          : const [];
-
+      final data = await LearnerDashboardApiService.instance
+          .fetchCompetencies();
       if (mounted) {
         setState(() {
-          _competencies = competencies
-              .whereType<Map<String, dynamic>>()
-              .map((e) => Competency.fromJson(e))
+          _competencies = data
+              .map((e) => Competency.fromJson(e as Map<String, dynamic>))
               .toList();
-          _weeklyGoalTitle = weeklyGoal?['title'] ?? "Weekly Goal";
-          _weeklyProgress =
-              (weeklyGoal?['progress'] as num?)?.toDouble() ?? 0.0;
-          _openTaskCount = _countOpenTasks(quizzes);
         });
       }
     } catch (e) {
-      debugPrint("Error loading dashboard data: $e");
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
+      debugPrint("Error fetching competencies: $e");
+    }
+  }
+
+  Future<void> _fetchWeeklyGoal() async {
+    try {
+      final goal = await LearnerDashboardApiService.instance.fetchWeeklyGoal();
+      if (mounted && goal != null) {
+        setState(() {
+          _weeklyGoalTitle = goal['title'] ?? "Weekly Goal";
+          _weeklyProgress = (goal['progress'] as num?)?.toDouble() ?? 0.0;
+        });
       }
+    } catch (e) {
+      debugPrint("Error fetching weekly goal: $e");
     }
   }
 
@@ -187,82 +184,6 @@ class _MainViewState extends State<MainView> {
     } catch (e) {
       // Fallback for Guest mode
     }
-  }
-
-  int _countOpenTasks(List<dynamic> quizzes) {
-    if (quizzes.isEmpty) {
-      return 0;
-    }
-
-    var openCount = 0;
-    for (final item in quizzes) {
-      if (item is! Map<String, dynamic>) {
-        openCount++;
-        continue;
-      }
-      if (_isOpenTask(item)) {
-        openCount++;
-      }
-    }
-
-    return openCount;
-  }
-
-  bool _isOpenTask(Map<String, dynamic> item) {
-    final rawStatus =
-        item['status']?.toString().trim().toLowerCase() ??
-        item['state']?.toString().trim().toLowerCase() ??
-        item['quiz_status']?.toString().trim().toLowerCase() ??
-        '';
-
-    const closedStatuses = {
-      'completed',
-      'complete',
-      'done',
-      'submitted',
-      'graded',
-      'closed',
-      'finished',
-      'archived',
-    };
-    if (closedStatuses.contains(rawStatus)) {
-      return false;
-    }
-
-    const openStatuses = {
-      'open',
-      'available',
-      'pending',
-      'active',
-      'in_progress',
-      'assigned',
-      'due',
-    };
-    if (openStatuses.contains(rawStatus)) {
-      return true;
-    }
-
-    final isCompleted =
-        item['is_completed'] == true ||
-        item['completed'] == true ||
-        item['submitted'] == true ||
-        item['is_submitted'] == true ||
-        item['done'] == true;
-    if (isCompleted) {
-      return false;
-    }
-
-    final isOpen =
-        item['is_open'] == true ||
-        item['available'] == true ||
-        item['pending'] == true ||
-        item['assigned'] == true ||
-        item['active'] == true;
-    if (isOpen) {
-      return true;
-    }
-
-    return true;
   }
 
   Future<void> _onSelectItem(MenuItem item) async {
@@ -820,6 +741,7 @@ class _MainViewState extends State<MainView> {
     final completedCount = _competencies
         .where((item) => item.progress >= 0.8)
         .length;
+    final tasksDue = 2;
     final progressPercent = (_weeklyProgress * 100).round();
 
     return Column(
@@ -851,13 +773,9 @@ class _MainViewState extends State<MainView> {
                 accent: AppColors.brandGreen,
               ),
               _buildOverviewStatCard(
-                title: "Open tasks",
-                value: _openTaskCount.toString(),
-                caption: _openTaskCount == 0
-                    ? "No active quizzes yet"
-                    : _openTaskCount == 1
-                    ? "1 active quiz available"
-                    : "Active quizzes available",
+                title: "Tasks due",
+                value: tasksDue.toString(),
+                caption: "Review pending work",
                 icon: Icons.assignment_late_rounded,
                 accent: AppColors.accentOrange,
               ),

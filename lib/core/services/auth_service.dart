@@ -225,47 +225,6 @@ class AuthService {
     return false;
   }
 
-  Future<void> persistParentSession({
-    required String token,
-    required Map<String, dynamic> user,
-  }) async {
-    final roleId = _extractRoleId(user) ?? 7;
-    final roleName = _extractRoleName(user) ?? 'parent';
-
-    await _secureStorage.write(key: _tokenKey, value: token);
-    await _secureStorage.write(key: _passportTokenKey, value: token);
-    await _secureStorage.write(key: _roleIdKey, value: roleId.toString());
-    await _secureStorage.write(key: _roleNameKey, value: roleName);
-
-    final userId = user['id'];
-    if (userId != null) {
-      await _secureStorage.write(
-        key: _userIdKey,
-        value: userId.toString(),
-      );
-    }
-    final studentId = user['student_id'] ?? user['loho_id'];
-    if (studentId != null) {
-      await _secureStorage.write(
-        key: _studentIdKey,
-        value: studentId.toString(),
-      );
-    }
-    final name = user['name'] ?? user['full_name'] ?? user['first_name'];
-    if (name is String && name.trim().isNotEmpty) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_name', name.trim());
-    }
-  }
-
-  Future<bool> isParentSession() async {
-    final roleId = await getSavedRoleId();
-    final roleName = await getSavedRoleName();
-    return roleId == 7 ||
-        roleName == 'parent' ||
-        roleName == 'guardian';
-  }
-
   Future<String?> getToken() async {
     return _readSecureValue(_tokenKey);
   }

@@ -4,9 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:elimupepe/core/theme/app_theme.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:elimupepe/core/config/app_endpoints.dart';
-import 'package:elimupepe/features/auth/learner_flow.dart';
+import 'package:elimupepe/features/auth/login_screen.dart';
 import 'package:elimupepe/core/theme/app_page_transitions.dart';
-import 'package:elimupepe/features/parental_control/parent_login_screen.dart';
 
 Future<void> _launchWhatsApp(BuildContext context) async {
   final Uri url = Uri.parse(
@@ -265,9 +264,7 @@ class RoleSelectionScreen extends StatelessWidget {
                         onTap: () {
                           Navigator.of(
                             context,
-                          ).push(
-                            AppPageTransitions.route(const LearnerFlowScreen()),
-                          );
+                          ).push(AppPageTransitions.route(const LoginScreen()));
                         },
                         delay: 400.ms,
                       ),
@@ -277,12 +274,7 @@ class RoleSelectionScreen extends StatelessWidget {
                         title: 'I am a Parent/Guardian',
                         subtitle: 'Monitor progress and manage accounts.',
                         webMessage:
-                            'Tap "Open App Login" to sign in inside the app, or visit elimupepe.loholearning.co.ke to create your account and manage your child\'s learning journey.',
-                        onTap: () => Navigator.of(context).push(
-                          AppPageTransitions.route(
-                            const ParentLoginScreen(),
-                          ),
-                        ),
+                            'Please visit elimupepe.loholearning.co.ke to create your account and manage your child\'s learning journey.',
                         delay: 500.ms,
                       ),
                       const SizedBox(height: 20),

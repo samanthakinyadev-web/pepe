@@ -4,7 +4,7 @@ description: "Elimu Pepe - Secure CBC Learning App for Smart Learning."
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
-version: 1.2.8+16
+version: 1.2.8+15
 
 environment:
   sdk: ^3.10.7
@@ -44,8 +44,7 @@ dependencies:
   device_info_plus: ^9.1.0
 
   # App settings
-  shared_preferences: ^2.2.2 # Quick local flags (like current session)
-  crypto: ^3.0.3 # For secure PIN hashing
+  shared_preferences: ^2.2.0
 
   # Firebase
   firebase_core: ^3.8.1
